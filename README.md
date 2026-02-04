@@ -1,2 +1,3 @@
-# smart-web-search-module
-This is a module for smart web searching with Tavily.
+# Smart Web Search Module
+
+A Python module for intelligent web searching and information retrieval using Tavily API with built-in RAG (Retrieval-Augmented Generation) capabilities.
