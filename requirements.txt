@@ -1,0 +1,8 @@
+requests
+bs4
+selenium
+markdownify
+tavily
+numpy
+sentence_transformers
+langchain_text_splitters

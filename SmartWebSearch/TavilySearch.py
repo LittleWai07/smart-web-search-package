@@ -445,9 +445,9 @@ class TavilySearch:
             _SearchResults: The search results.
         """
 
-        show_debug(f"Searching for query: {query}")
+        show_debug(f"Searching for query: {query.replace(' ', '+')}")
 
-        results: _SearchResults = self.__search(query, 15)
+        results: _SearchResults = self.__search(query.replace(' ', '+'), 15)
 
         # Return the search results
         return results
@@ -473,9 +473,9 @@ class TavilySearch:
         for detail in extra_details:
             current_query: str = f"{query.strip().replace(' ', '+')}+{detail.strip().replace(' ', '+')}"
 
-            show_debug(f"Searching for query: {current_query}")
+            show_debug(f"Searching for query: {current_query.replace(' ', '+')}")
 
-            results.append(self.__search(current_query))
+            results.append(self.__search(current_query.replace(' ', '+')))
 
         # Return the search results
         return results
