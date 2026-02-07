@@ -40,11 +40,7 @@ while True:
     query = input("Enter a query for search on knowledge base: ")
 
     # Match the knowledge base with the query
-    matches = rag.match_knowledge(kb, query, threshold_score = 6.0)
-
-    # If no matches, try again with a lower threshold
-    if not matches:
-        matches = rag.match_knowledge(kb, query, threshold_score = 4.0)
+    matches = rag.match_knowledge(kb, query)
 
     # If no matches, return no matches
     if not matches:

@@ -239,6 +239,7 @@ class TavilySearch:
             "instagram.com",
             "cloudflare.com",
             "stackoverflow.com",
+            "soundcloud.com",
             "sap.com",
             "ad.",
             "nav.",
@@ -332,7 +333,7 @@ class TavilySearch:
             print("[ERROR] Request timed out, returning empty content.")
             return _PageContent(
                 url = url,
-                content = None
+                content = ""
             )
 
         show_debug(f"Loaded URL {idx}/{total_results}: {url}")

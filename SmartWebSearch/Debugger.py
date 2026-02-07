@@ -91,4 +91,4 @@ def create_debug_file(filename: str, ext: str, content: str) -> None:
         f.write(content)
 
     # Show debug message
-    show_debug(f"Created debug file: {filename}.{ext}, content length: {len(content)}", type = 'FILE')
+    show_debug(f"Created debug file: 'debug-{filename}.{ext}', content length: {len(content)}", type = 'FILE')
