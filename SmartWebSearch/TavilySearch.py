@@ -330,7 +330,7 @@ class TavilySearch:
         try:
             driver.get(url)
         except Exception:
-            print("[ERROR] Request timed out, returning empty content.")
+            show_debug("Request timed out, returning empty content.", type = "ERROR")
             return _PageContent(
                 url = url,
                 content = ""
