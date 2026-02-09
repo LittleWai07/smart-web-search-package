@@ -417,9 +417,18 @@ class TavilySearch:
         while "  " in parsed_markdown:
             parsed_markdown = parsed_markdown.replace("  ", " ")
 
-        # If the parsed markdown length less than 5000 characters, empty it directly, and see it as no content
-        if len(parsed_markdown) < 5000:
-            parsed_markdown: str = ""
+        # If the parsed markdown length less than 550 characters
+        if len(parsed_markdown) < 550:
+            # If the parsed markdown contains the invalid keywords
+            for keyword in ["javascript", "cookie", "human", "enable", "verify"]:
+                if keyword in parsed_markdown.lower():
+
+                    show_debug(f"Found invalid keyword '{keyword}' (appeared {parsed_markdown.lower().count(keyword)} times) in parsed content from URL {idx}/{total_results}: {url}")
+                    show_debug(f"Entire parsed content from URL {idx}/{total_results}: {parsed_markdown}")
+
+                    # Remove the parsed markdown
+                    parsed_markdown = ""
+                    break
 
         show_debug(f"Parsed content from URL {idx}/{total_results}: {url}")
 
