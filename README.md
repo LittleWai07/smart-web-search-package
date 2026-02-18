@@ -1,5 +1,5 @@
 # Smart Web Search Module
 
-A Python module for intelligent web searching and information retrieval using Tavily API with built-in RAG (Retrieval-Augmented Generation) capabilities.
+SmartWebSearch is a Python module that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 **Note: This module haven't completely finished yet.**

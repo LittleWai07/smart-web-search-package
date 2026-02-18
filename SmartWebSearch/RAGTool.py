@@ -9,7 +9,6 @@ This module implements the RAGTool.
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-import json, os, sys, shutil, re
 from typing import Any
 from SmartWebSearch.Debugger import show_debug
 

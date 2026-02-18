@@ -6,8 +6,7 @@ This module implements the query brainstorm for the web searching module.
 """
 
 # Import the required modules
-import json, os, sys, shutil, re
-from typing import Any, TypeAlias, Literal
+from typing import Any
 import requests
 
 # QueryStorm Class
@@ -67,46 +66,99 @@ class QueryStorm:
         self.openai_comp_api_key: str = openai_comp_api_key
         self.openai_comp_api_base_url: str = openai_comp_api_base_url
 
-    def storm_with_summary(self, query: str, summary: str) -> list[str]:
+    def storm_with_summary(self, prompt: str, summary: str) -> list[str]:
         """
-        Generate a query based on the summary of the search results.
+        Generate auxiliary queries based on the prompt and summary of the search results.
 
         Args:
-            query (str): The search query.
+            prompt (str): The prompt.
             summary (str): The summary of the search results.
 
         Returns:
-            list[str]: The generated queries.
+            list[str]: The generated queries. (Auxiliary Queries)
         """
 
-        prompt: str = """你是一个智能搜索助手，专门负责分析用户的搜索意图并生成扩展的搜索细节关键词。
+        prompt: str = """你是一个智能搜索助手，专门负责分析用户的搜索意图并生成扩展的搜索辅助关键词。
 
         任务描述：
-        根据用户提供的搜索关键词“{query}”和该关键词的搜索结果总结“{summary}”，首先判断用户想搜索的内容的核心类型（例如，概念定义、工具使用、历史背景、技术原理等），然后基于这个类型，延展出更多相关的搜索细节关键词。这些关键词应帮助用户进一步精确搜索，获取更具体、更深入的信息。
+        根据用户提供的提示詞“{prompt}”和提示詞相關关键词的搜索结果总结“{summary}”，首先判断用户想搜索的内容的核心类型（例如，概念定义、工具使用、历史背景、技术原理等），然后基于这个类型，延展出更多相关的搜索辅助关键词。这些关键词应帮助用户进一步精确搜索，获取更具体、更深入的信息。
 
         输出格式要求：
-        - 輸出3至5個搜索細節關鍵詞即可，不必太多，也不能太少。
-        - 仅输出搜索细节关键词，不包含任何其他文字或解释。
-        - 每个搜索细节关键词之间用一个空格“ ”隔开。
-        - 如果搜索细节关键词内包含多个单词，请用加号“+”连接，不要使用空格或其他分隔符。
-        - 所有搜索细节关键词必须使用英文。
+        - 输出1至3个搜索辅助关键词即可，不必太多，也不能太少。
+        - 仅输出搜索辅助关键词，不包含任何其他文字或解释。
+        - 每个搜索辅助关键词之间用一个空格“ ”隔开。
+        - 如果搜索辅助关键词内包含多个单词，请用加号“+”连接，不要使用空格或其他分隔符。
+        - 关键词的语言应与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
 
         示例：
         输入：
-        query = 三角函数
+        prompt = 什麽是三角函数？
         summary = 三角函数是数学很常见的一类关于角度的函数。三角函数将直角三角形的内角和它的两边的比值相关联，亦可以用单位圆的各种有关线段的长短的等价来定义。三角函数在研究三角形和圆形等几何形状的性质时有着重要的作用，亦是研究振动、波、天体运动和各种周期性现象的基础数学工具。在数学分析上，三角函数亦定义为无穷级数或特定微分方程式的解，允许它们的取值扩展到任意实数值，甚至是复数值。
         输出：
         definitions purposes general+formulas
 
         请严格按照上述格式和示例执行。"""
 
-        # Generate a query based on the summary of the search results
+        # Generate queries based on the summary of the search results
         res: dict[str, Any] = self.__send_request(
             self.openai_comp_api_key,
             [
                 {
                     "role": "user",
-                    "content": prompt.format(query = query, summary = summary)
+                    "content": prompt.format(prompt = prompt, summary = summary)
+                }
+            ],
+            self.model,
+            self.openai_comp_api_base_url
+        )
+
+        # Return the generated queries
+        return res["choices"][0]["message"]["content"].split(" ")
+    
+    def storm_with_prompt(self, u_prompt: str) -> list[str]:
+        """
+        Generate a query based on the prompt.
+
+        Args:
+            u_prompt (str): The user prompt.
+
+        Returns:
+            list[str]: The generated queries. (Main Queries, Auxiliary Queries)
+        """
+
+        prompt: str = """你是一个专业的搜索关键词优化助手，擅长分析用户的查询意图，并提取精准的网络搜索关键词。
+
+        任务描述：
+        根据用户提供的提示词 {prompt}，判断用户想要搜索的核心内容，并列出网络搜索关键词。
+        关键词生成规则：
+        - 主要关键词：准确反映搜索主题的核心概念，必须保留。
+        - 辅助关键词：围绕主要关键词，涵盖用户明确提及需要搜索的具体内容（例如定义、类型、用途、原理、历史、相关公式或操作方法等）。
+        - 输出长度规则：
+        - 如果用户仅提出核心搜索主题，未明确要求搜索任何具体内容，则只输出主要关键词。
+        - 如果用户在提示词中明确指明需要搜索与核心主题相关的具体内容，则输出「主要关键词 + 辅助关键词」，且辅助关键词数量不超过3个。
+        - 关键词语言：关键词的语言应与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
+        
+        输出格式要求：
+        - 仅输出关键词本身，不包含任何解释或附加文字。
+        - 关键词之间用一个空格「 」分隔。
+        - 如果一个关键词由多个词语组成，请用加号「+」连接（例如：artificial+intelligence 或 人工智能+应用），以确保该关键词在搜索时被视为一个整体。
+        - 第一个关键词始终为主要关键词，若存在辅助关键词则依次排列其后（最多3个）。
+        
+        示例：
+        - 用户提示词：What is trigonometry?（未指定具体内容）
+        输出：trigonometric+functions
+        - 用户提示词：I want to learn about the definitions and formulas of trigonometry（明确指定内容）
+        输出：trigonometric+functions definitions formulas applications （此处“definitions”和“formulas”是用户明确提到的，因此优先纳入）
+        
+        请严格遵循上述格式，确保输出的关键词准确、简洁，能够帮助用户进行高效的网络搜索。"""
+
+        # Generate a query based on the prompt
+        res: dict[str, Any] = self.__send_request(
+            self.openai_comp_api_key,
+            [
+                {
+                    "role": "user",
+                    "content": prompt.format(prompt = u_prompt)
                 }
             ],
             self.model,

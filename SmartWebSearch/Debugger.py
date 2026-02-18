@@ -6,12 +6,13 @@ This module implements the Debugger Tool for the package.
 """
 
 # Import the required modules
-import json, os, sys, shutil, re
+import os
 import datetime
 from typing import Any, TypeAlias, Literal
 
 # Type Alias
 _DebugType: TypeAlias = Literal['INFO', 'WARNING', 'ERROR', 'FILE']
+_DebugImportance: TypeAlias = Literal['LOW', 'MEDIUM', 'HIGH']
 
 # Configuration Class
 class DebuggerConfiguration:
@@ -21,6 +22,12 @@ class DebuggerConfiguration:
 
     # Whether to enable debugging
     DEBUGGING: bool = False
+
+    # Whether to enable creating debug files
+    CREATE_DEBUG_FILES: bool = True
+
+    # Whether to skip low importance debug messages
+    SKIP_LOW_IMPORTANCE: bool = False
 
     # Functions
     def clear_debug_files() -> None:
@@ -45,7 +52,7 @@ class DebuggerConfiguration:
     clear_debug_files()
 
 # Functions
-def show_debug(*values: tuple[Any], type: _DebugType = 'INFO') -> None:
+def show_debug(*values: tuple[Any], type: _DebugType = 'INFO', importance: _DebugImportance = 'MEDIUM') -> None:
     """
     Print the values to the console if DEBUGGING is True.
     
@@ -57,9 +64,15 @@ def show_debug(*values: tuple[Any], type: _DebugType = 'INFO') -> None:
         None
     """
 
+    # If type is error, set importance to high
+    if type == 'ERROR': importance = 'HIGH'
+
+    # If importance is low and SKIP_LOW_IMPORTANCE is True, return
+    if importance == 'LOW' and DebuggerConfiguration.SKIP_LOW_IMPORTANCE: return
+
     # Print the values if DEBUGGING is True
     if DebuggerConfiguration.DEBUGGING:
-        print(f'[DEBUGGER] <{type}>', *values)
+        print(f'[DEBUGGER] <{type} - {importance[0]}>', *values)
 
 def create_debug_file(filename: str, ext: str, content: str) -> None:
     """
@@ -76,6 +89,9 @@ def create_debug_file(filename: str, ext: str, content: str) -> None:
 
     # If not debugging, return
     if not DebuggerConfiguration.DEBUGGING: return
+
+    # If not creating debug files, return
+    if not DebuggerConfiguration.CREATE_DEBUG_FILES: return
 
     # Replace all spaces in the filename to dash
     filename: str = filename.replace(" ", "-")

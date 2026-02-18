@@ -6,17 +6,13 @@ This module implements the TavilySearch API.
 """
 
 # Import the required modules
-import requests
 from bs4 import BeautifulSoup
 from bs4.element import Tag, NavigableString, PageElement
-from selenium.webdriver import Chrome
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
-import json, os, sys, shutil, re
 from markdownify import markdownify
 from tavily import TavilyClient
 from typing import Any, TYPE_CHECKING
 from SmartWebSearch.Debugger import show_debug, create_debug_file
+from SmartWebSearch.ChromeDriver import ChromeDriver
 
 if TYPE_CHECKING:
     from SmartWebSearch.RAGTool import RAGTool, _KnowledgeBaseSet
@@ -181,15 +177,18 @@ class _SearchResults:
 
         return self.results[index]
 
-    def to_str(self) -> str:
+    def to_str(self, include_summary: bool = True) -> str:
         """
         Return the summary and each result of the search results.
+
+        Args:
+            include_summary (bool) = True: Whether to include the summary. Defaults to True.
 
         Returns:
             str: The summary and each result of the search results.
         """
 
-        return f"{self.summary}\n" + "\n".join([result.to_str() for result in self.results])
+        return (f"{self.summary}\n" if include_summary else "") + "\n".join([result.to_str() for result in self.results])
 
 class SearchResultsContainer:
     """
@@ -245,6 +244,16 @@ class SearchResultsContainer:
             # Otherwise, raise a TypeError
             raise TypeError(f"Expected _SearchResult or _SearchResults, got {type(results)}")
         
+    def get_summaries(self) -> list[str]:
+        """
+        Return the summaries of the search results.
+
+        Returns:
+            list[str]: The summaries of the search results.
+        """
+
+        return [result.summary for result in self.results if isinstance(result, _SearchResults)]
+        
     def __list(self):
         """
         Return the list of search results.
@@ -257,8 +266,15 @@ class SearchResultsContainer:
 
         for result in self.results:
             if isinstance(result, _SearchResults):
-                results.extend(result.results)
+                for result in result.results:
+                    # Check if result url repeated
+                    if result.url in [r.url for r in results]:
+                        continue
+                    results.append(result)
             else:
+                # Check if result url repeated
+                if result.url in [r.url for r in results]:
+                    continue
                 results.append(result)
 
         return results
@@ -314,32 +330,51 @@ class SearchResultsContainer:
 
         return self.__list()[index]
         
-    def to_str(self) -> str:
+    def to_str(self, include_summary: bool = True) -> str:
         """
         Return the summary and each result of the search results.
+
+        Args:
+            include_summary (bool) = True: Whether to include the summary. Defaults to True.
 
         Returns:
             str: The summary and each result of the search results.
         """
 
-        return "\n".join([result.to_str() for result in self.results])
+        return "\n".join([result.to_str(include_summary = include_summary) if isinstance(result, _SearchResults) else result.to_str() for result in self.results])
     
-    def to_rag(self, rag_tool: "RAGTool") -> "_KnowledgeBaseSet":
+    def to_rag(self, rag_tool: "RAGTool", include_summary: bool = True) -> "_KnowledgeBaseSet":
         """
         Return the RAGTool object.
 
         Args:
             rag_tool (RAGTool): The RAGTool object.
+            include_summary (bool) = True: Whether to include the summary. Defaults to True.
 
         Returns:
             _KnowledgeBaseSet: The knowledge base set.
         """
 
         # Build the knowledge base
-        kl_base_set: _KnowledgeBaseSet = rag_tool.build_knowledge(self.to_str())
+        kl_base_set: _KnowledgeBaseSet = rag_tool.build_knowledge(self.to_str(include_summary = include_summary))
 
         # Return the RAGTool object and the knowledge base set
         return kl_base_set
+    
+    def to_txt(self, file_path: str = "search_results.txt") -> None:
+        """
+        Save the search results to a text file.
+
+        Args:
+            file_path (str) = "search_results.txt": The file path to save the search results.
+
+        Returns:
+            None
+        """
+
+        # Save the search results to a text file
+        with open(file_path, "w", encoding = "utf-8") as f:
+            f.write(self.to_str())
 
 class InvalidParameterError(Exception):
     """
@@ -348,6 +383,24 @@ class InvalidParameterError(Exception):
     def __init__(self, message: str) -> None:
         """
         Initialize the InvalidParameterError object.
+
+        Args:
+            message (str): The error message.
+
+        Returns:
+            None
+        """
+
+        self.message: str = message
+        super().__init__(self.message)
+
+class InactiveError(Exception):
+    """
+    An exception raised when the TavilySearch object is inactive.
+    """
+    def __init__(self, message: str) -> None:
+        """
+        Initialize the InactiveError object.
 
         Args:
             message (str): The error message.
@@ -379,6 +432,12 @@ class TavilySearch:
         # Initialize the TavilyClient object
         self.client: TavilyClient = TavilyClient(api_key)
 
+        # Initialize the ChromeDriver object
+        self.chrome_driver: ChromeDriver = ChromeDriver()
+
+        # Set the status of the TavilySearch object
+        self.status: bool = True
+
         # Set the API key
         self.api_key: str = api_key
 
@@ -394,6 +453,9 @@ class TavilySearch:
         Returns:
             _SearchResults: The search results.
         """
+
+        # Check the status of the TavilySearch object
+        if not self.status: raise InactiveError("TavilySearch object is not active.")
 
         # Search for a query using Tavily API
         results: dict[str, Any] = dict(
@@ -474,7 +536,8 @@ class TavilySearch:
             else:
                 results["results"].append(result)
 
-        show_debug(f"{len(results['results'])} results found for query: {query}, summary for the results: {results['answer']}")            
+        show_debug(f"{len(results['results'])} results found for query: {query}")
+        show_debug(f"Summary for the results: {results['results']}", importance = "LOW")
 
         # Return the results
         return _SearchResults(
@@ -513,19 +576,18 @@ class TavilySearch:
             _PageContent: The parsed content.
         """
 
-        # Create a headless Chrome browser
-        chrome_options: Options = Options()
-        chrome_options.add_argument("--headless")
-        chrome_options.add_argument("--no-sandbox")
+        # Check the status of the TavilySearch object
+        if not self.status: raise InactiveError("TavilySearch object is not active.")
 
-        driver: Chrome = Chrome(options=chrome_options)
-        driver.set_page_load_timeout(60)
+        # Process the parsing task
+        show_debug(f"Processing parsing task for URL {idx}/{total_results}: {url}")
 
-        show_debug(f"Created Chrome browser, loading URL {idx}/{total_results}: {url}")
+        # Load the url in the browser
+        show_debug(f"Loading URL {idx}/{total_results}: {url}", importance = "LOW")
 
         # Load the URL
         try:
-            driver.get(url)
+            self.chrome_driver.driver.get(url)
         except Exception:
             show_debug("Request timed out, returning empty content.", type = "ERROR")
             return _PageContent(
@@ -533,15 +595,12 @@ class TavilySearch:
                 content = ""
             )
 
-        show_debug(f"Loaded URL {idx}/{total_results}: {url}")
+        show_debug(f"Fetched URL {idx}/{total_results}: {url}", importance = "LOW")
 
         # Get the page source
-        page_source: str = driver.page_source
+        page_source: str = self.chrome_driver.driver.page_source
 
-        # Close the browser
-        driver.quit()
-
-        show_debug(f"Closed Chrome browser, parsing content from URL {idx}/{total_results}: {url}")
+        show_debug(f"Parsing content from URL {idx}/{total_results}: {url}", importance = "LOW")
 
         # Parse the page source with BeautifulSoup
         soup: BeautifulSoup = BeautifulSoup(page_source, "html.parser")
@@ -619,17 +678,22 @@ class TavilySearch:
         # If the parsed markdown length less than 550 characters
         if len(parsed_markdown) < 550:
             # If the parsed markdown contains the invalid keywords
-            for keyword in ["javascript", "cookie", "human", "enable", "verify"]:
+            for keyword in ["javascript", "cookie", "human", "enable", "verify", "err", "error"]:
                 if keyword in parsed_markdown.lower():
 
-                    show_debug(f"Found invalid keyword '{keyword}' (appeared {parsed_markdown.lower().count(keyword)} times) in parsed content from URL {idx}/{total_results}: {url}")
-                    show_debug(f"Entire parsed content from URL {idx}/{total_results}: {parsed_markdown.replace("\n", "\\n")}")
+                    show_debug(f"Found invalid keyword '{keyword}' (appeared {parsed_markdown.lower().count(keyword)} times) in parsed content from URL {idx}/{total_results}: {url}", importance = "LOW")
+                    show_debug(f"Entire parsed content from URL {idx}/{total_results}: {parsed_markdown.replace("\n", "\\n")}", importance = "LOW")
 
                     # Remove the parsed markdown
                     parsed_markdown = ""
                     break
 
-        show_debug(f"Parsed content from URL {idx}/{total_results}: {url}")
+        # If the parsed markdown length less than 400 characters
+        if len(parsed_markdown) < 400:
+            # Remove the parsed markdown
+            parsed_markdown = ""
+
+        show_debug(f"Parsed content from URL {idx}/{total_results}: {url}, length: {len(parsed_markdown)}")
 
         create_debug_file(
             filename = f"parsed-content",
@@ -643,57 +707,82 @@ class TavilySearch:
             content = parsed_markdown
         )
 
-    def search(self, query: str, include_page_content: bool = True) -> _SearchResults:
+    def search(self, query: str, include_page_content: bool = True, max_results: int = 10) -> _SearchResults:
         """
         Search for a query using Tavily API.
 
         Args:
             query (str): The search query.
             include_page_content (bool) = True: Whether to include page content.
+            max_results (int) = 10: The maximum number of results to return.
 
         Returns:
             _SearchResults: The search results.
         """
 
+        # Check the status of the TavilySearch object
+        if not self.status: raise InactiveError("TavilySearch object is not active.")
+
         show_debug(f"Searching for query: {query.replace(' ', '+')}")
 
-        results: _SearchResults = self.__search(query.replace(' ', '+'), 15, include_page_content)
+        results: _SearchResults = self.__search(query.replace(' ', '+'), max_results, include_page_content)
 
         # Return the search results
         return results
 
-    def search_d(self, query: str, extra_details: list[str] = [], include_page_content: bool = True, include_main_query: bool = False) -> list[_SearchResults]:
+    def search_d(self, query: str, aux_queries: list[str] = [], include_page_content: bool = True, include_main_query: bool = False, max_results_for_each: int = 6) -> list[_SearchResults]:
         """
-        Search for a query using Tavily API with extra details.
+        Search for a query using Tavily API with auxiliary queries.
 
         Args:
             query (str): The search query.
-            extra_details (list[str]) = []: The list of extra details to include in the page content of the search results.
+            aux_queries (list[str]) = []: The list of auxiliary queries that will be added to the search query and searched separately.
             include_page_content (bool) = True: Whether to include page content.
             include_main_query (bool) = False: Whether to include the main query in the page content of the search results.
+            max_results_for_each (int) = 6: The maximum number of results to return for each query (including the main query and the auxiliary queries).
 
         Returns:
             list[_SearchResults]: The search results.
         """
 
-        # Check if extra details are provided
-        if len(extra_details) == 0:
-            raise InvalidParameterError("An empty list of extra details provided.")
+        # Check the status of the TavilySearch object
+        if not self.status: raise InactiveError("TavilySearch object is not active.")
+
+        # Check if auxiliary queries are provided
+        if len(aux_queries) == 0:
+            raise InvalidParameterError("An empty list of auxiliary queries provided.")
 
         # Search for the queries using Tavily API
         results: list[_SearchResults] = []
 
         # Search for the main query
         if include_main_query:
-            results.append(self.__search(query.replace(' ', '+'), 15, include_page_content))
+            results.append(self.__search(query.replace(' ', '+'), max_results_for_each, include_page_content))
 
-        # Search for the extra details with the main query
-        for detail in extra_details:
+        # Search for the auxiliary queries with the main query
+        for detail in aux_queries:
             current_query: str = f"{query.strip().replace(' ', '+')}+{detail.strip().replace(' ', '+')}"
 
             show_debug(f"Searching for query: {current_query.replace(' ', '+')}")
 
-            results.append(self.__search(current_query.replace(' ', '+'), 6, include_page_content))
+            results.append(self.__search(current_query.replace(' ', '+'), max_results_for_each, include_page_content))
 
         # Return the search results
         return results
+    
+    def quit(self) -> None:
+        """
+        Quit the TavilySearch object.
+
+        Returns:
+            None
+        """
+
+        # Check the status of the TavilySearch object
+        if not self.status: raise InactiveError("TavilySearch object is not active.")
+
+        # Set the status of the TavilySearch object to False
+        self.status = False
+
+        # Quit the ChromeDriver object
+        self.chrome_driver.quit()
