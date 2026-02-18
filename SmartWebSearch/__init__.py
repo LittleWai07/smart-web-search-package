@@ -84,11 +84,18 @@ class SmartWebSearch:
         # Generate some search queries
         m_query, *a_queries = self.qs.storm_with_prompt(prompt)
 
-        # Perform the search
-        results: list[_SearchResults] = ts.search_d(m_query, a_queries, include_main_query = True, include_page_content = False)
+        if a_queries:
+            # Perform the search
+            results: list[_SearchResults] | _SearchResults = ts.search_d(m_query, a_queries, include_main_query = True, include_page_content = False)
 
-        # Concatenate the summaries of the search results
-        content = '\n'.join([ result.summary for result in results ])
+            # Concatenate the summaries of the search results
+            content = '\n'.join([ result.summary for result in results ])
+        else:
+            # Perform the search
+            results: list[_SearchResults] | _SearchResults = ts.search(m_query, include_page_content = False)
+
+            # Concatenate the summaries of the search results
+            content = results.summary
 
         # Quit the TavilySearch object
         ts.quit()
