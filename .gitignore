@@ -7,3 +7,4 @@ server.py
 /build
 /dist
 *.spec
+sws.py
