@@ -39,14 +39,18 @@ CCCCCCCCCCCC   LLLLLLLLLLL   IIIIIIIII
 """
 
 line: str = "\n==============================================================================================================\n"
+singleline: str = "\n--------------------------------------------------------------------------------------------------------------\n"
 
 # Imports dependencias
-import requests
+import requests, urllib3
 import json, os
 from typing import Literal, TypeAlias
 
 # Set typealias
 _SearchModes: TypeAlias = Literal["search", "deepsearch"]
+
+# Set config file directory
+config_file_dir: str = "C:/.swsconfig"
 
 # Show logo
 print(logo)
@@ -57,13 +61,20 @@ print("SmartWebSearch Client Version 1.0.0\n\n" + line)
 # Show welcome message
 print("Welcome to SmartWebSearch Client!!!\n" + line)
 
+# Show Config file path
+print("Config file path: " + config_file_dir + "/sws_config.json\n" + line)
+
+# If the config file directory doesn't exist, create it
+if not os.path.exists(config_file_dir):
+    os.makedirs(config_file_dir, exist_ok = True)
+
 # If the config file doesn't exist, create it
-if not os.path.exists("config.json"):
-    with open("config.json", "w", encoding = "utf-8") as f:
+if not os.path.exists(config_file_dir + "/sws_config.json"):
+    with open(config_file_dir + "/sws_config.json", "w", encoding = "utf-8") as f:
         json.dump({"host": None, "ts_key": None, "ds_key": None}, f, indent = 4)
 
 # Get API key from config file
-with open("config.json", "r", encoding = "utf-8") as f:
+with open(config_file_dir + "/sws_config.json", "r", encoding = "utf-8") as f:
     config = json.load(f)
 
 # If the API key is not set, get it from the user
@@ -82,8 +93,8 @@ if not (config["host"] and config["ts_key"] and config["ds_key"]):
         config["ds_key"] = input("Please enter your DeepSeek AI API key: ")
 
     # Save the API key to the config file
-    with open("config.json", "w", encoding = "utf-8") as f:
-        json.dump(config, f, indent = 4)
+    with open("sws_config.json", "w", encoding = "utf-8") as f:
+        json.dump(config_file_dir + config, f, indent = 4)
 
     print(line + "\nClient setup complete!\n" + line)
 
@@ -120,29 +131,45 @@ OOO  OOO  O O  O O  OOO  O O
             break
 
         # Send request to API
-        response = requests.post(
-            f"http://{config['host']}/{search_mode}",
-            headers = {"Content-Type": "application/json"},
-            json = {
-                "prompt": prompt,
-                "ts_key": config["ts_key"],
-                "ds_key": config["ds_key"]
-            }
-        )
-        
         try:
+            response = requests.post(
+                f"http://{config['host']}/{search_mode}",
+                headers = {"Content-Type": "application/json"},
+                json = {
+                    "prompt": prompt,
+                    "ts_key": config["ts_key"],
+                    "ds_key": config["ds_key"]
+                }
+            )
+        
+        
             # Raise an exception if the request fails
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             # Print error message
             print(line + "\nAn HTTP error occurred: " + str(e) + "\n" + line)
             continue
+        except requests.exceptions.ConnectionError as e:
+            # Print error message
+            print(line + "\nA connection error occurred, please check your internet connection, server running status and try again" + "\n" + line)
+            continue
 
         # Print response
         print(line + "\n" + response.json()["summary"] + "\n" + line)
 
+def help():
+    print(line + "\nHelp: Available commands\n" + singleline)
+    print("search - Switch to search mode\n")
+    print("deepsearch - Switch to deepsearch mode\n")
+    print("clear - Clear the screen\n")
+    print("help - List available commands\n")
+    print("exit - Exit the program\n" + line)
+
 # Run search
 search()
+
+# Print help message
+help()
 
 while True:
     # Get command from user
@@ -170,11 +197,6 @@ while True:
 
     # If the command is 'help', list available commands
     elif command == "help":
-        print(line + "\nAvailable commands:\n" + line)
-        print("search - Switch to search mode\n")
-        print("deepsearch - Switch to deepsearch mode\n")
-        print("clear - Clear the screen\n")
-        print("exit - Exit the program")
-        print(line)
+        help()
 
 print(line + "\nGoodbye! Have a nice day!\n" + line)

@@ -4,4 +4,4 @@ debug-*
 /build
 /dist
 *.spec
-config.json
+sws_config.json
