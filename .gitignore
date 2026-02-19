@@ -1,10 +1,7 @@
 test.py
-test.json
 /SmartWebSearch/__pycache__
 debug-*
-test.ipynb
-server.py
 /build
 /dist
 *.spec
-sws.py
+config.json
