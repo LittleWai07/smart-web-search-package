@@ -118,6 +118,10 @@ OOO  OOO  O O  O O  OOO  O O
         if not prompt.strip():
             continue
 
+        # If the prompt is 'exit', exit the program
+        if prompt == "exit":
+            break
+
         # If the search mode is 'search', remind the user that the search process can take a few seconds to complete
         if search_mode == "search":
             print("Please wait, the search process can take a few seconds to complete...")
@@ -125,10 +129,6 @@ OOO  OOO  O O  O O  OOO  O O
         # If the search mode is 'deepsearch', remind the user that the deepsearch process can take a few minutes to complete
         if search_mode == "deepsearch":
             print("Please wait, the deepsearch process can take a few minutes to complete...")
-
-        # If the prompt is 'exit', exit the program
-        if prompt == "exit":
-            break
 
         # Send request to API
         try:
