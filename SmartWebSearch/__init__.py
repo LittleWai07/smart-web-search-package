@@ -118,39 +118,59 @@ class SmartWebSearch:
         # Create SearchResultsContainer object
         src: SearchResultsContainer = SearchResultsContainer()
 
-        # Generate queries
-        total_aux_queries: list[str] = []
+        # Decompose the prompt into tasks
+        tasks: list[str] = self.qs.decompose_tasks_with_prompt(prompt)
 
-        m_query, *a_queries = self.qs.storm_with_prompt(prompt)
-        total_aux_queries.append(a_queries)
+        # Create a task queries container to store the queries for each task
+        """
+        task_queries (list)
+        - task (list)
+            - main_query (str)
+            - auxiliary_queries (list[str])
+        """
 
-        # Search with main query
-        results: _SearchResults | list[_SearchResult] = ts.search(m_query)
-        summary = results.summary
-        src.append(results)
+        task_queries: list[list[str, list[str]]] = []
 
-        if a_queries:
-            # Search with auxiliary queries
-            results: _SearchResults | list[_SearchResult] = ts.search_d(m_query, a_queries, max_results_for_each = 10)
-            src.append(results)
-
-        # If the length of the search results content less than 80000, generate more queries with the summary
-        if len(src.to_str(False)) < 80000:
+        # Loop through the tasks
+        for task in tasks:
             # Generate queries
-            a_queries: list[str] = self.qs.storm_with_summary(prompt, summary)
-            total_aux_queries.append(a_queries)
+            aux_queries_list: list[str] = []
 
-            # Search with auxiliary queries
-            results = ts.search_d(m_query, a_queries)
+            m_query, *a_queries = self.qs.storm_with_prompt(task)
+            aux_queries_list.append(a_queries)
+
+            # Search with main query
+            results: _SearchResults | list[_SearchResult] = ts.search(m_query)
+            summary = results.summary
             src.append(results)
+
+            if a_queries:
+                # Search with auxiliary queries
+                results: _SearchResults | list[_SearchResult] = ts.search_d(m_query, a_queries, max_results_for_each = 10)
+                src.append(results)
+
+            # If the length of the search results content less than 80000, generate more queries with the summary
+            if len(src.to_str(False)) < 80000:
+                # Generate queries
+                a_queries: list[str] = self.qs.storm_with_summary(task, summary)
+                aux_queries_list.append(a_queries)
+
+                # Search with auxiliary queries
+                results = ts.search_d(m_query, a_queries)
+                src.append(results)
+
+            # Append the task queries
+            task_queries.append([m_query, aux_queries_list])
 
         # Create knowledge base
         kb = src.to_rag(self.rag, False)
 
         # Match the queries with the knowledge base
         matches = []
-        for a_query in total_aux_queries:
-            matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 15, threshold_score = 0.6))
+        for task in task_queries:
+            m_query: str = task[0]
+            for a_query in task[1]:
+                matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 15, threshold_score = 0.6))
 
         # Generate conclusion
         conclusion = self.smr.summarize(prompt, "\n".join(src.get_summaries() + [match[1] for match in matches]))

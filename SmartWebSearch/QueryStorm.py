@@ -70,6 +70,68 @@ class QueryStorm:
         # Check the OpenAI Compatible API key
         KeyCheck.check_openai_comp_api_key(openai_comp_api_key, model, openai_comp_api_base_url)
 
+    def decompose_tasks_with_prompt(self, u_prompt: str) -> list[str]:
+        """
+        Decompose task prompts based on the user prompt.
+
+        Args:
+            u_prompt (str): The user prompt.
+
+        Returns:
+            list[str]: The generated task prompts.
+        """
+
+        prompt: str = """你是一个专业的搜索任务分解助手。你的工作是将用户给出的包含多个搜索需求的提示词，分解成多个独立的搜索任务提示词。
+
+        任务描述
+        用户会输入一段提示词{prompt}，其中可能包含一个或多个搜索请求，每个请求针对不同的主体（如人物、团体、事物等）。你需要识别出每个独立的主体，并为每个主体生成一个对应的搜索任务提示词。如果一个主体下用户要求搜索多个方面的内容（如简介、成员、专辑等），则将这些内容整合到同一个任务提示词中。
+
+        输出格式
+        - 每个任务提示词的格式为：“搜索关于[主体]的[具体搜索范围]”
+        - 如果用户没有指定具体搜索范围，则使用“资料”作为默认范围。
+        - 如果有多个任务，请用“&&”将每个任务提示词连接起来。
+        - 如果只有一个任务，直接输出该任务提示词，不加“&&”。
+        - 输出时不要包含任何其他解释或文字，只输出格式化后的任务提示词字符串。
+        - 根据用户提示词所用的语言不同，输出结果也要按照提示词所用的语言输出。
+
+        示例
+        示例1：
+        用户输入：搜索关于IVE这个KPOP组合的资料，关于IVE的简介、成员、专辑和歌曲。此外，帮我搜索关于ATEEZ这个KPOP组合的资料，关于ATEEZ的成员、专辑和歌曲。
+        你的输出：搜索IVE这个KPOP组合的简介、成员、专辑和歌曲&&搜索ATEEZ这个KPOP组合的成员、专辑和歌曲
+
+        示例2：
+        用户输入：搜索关于IVE这个KPOP组合的资料，关于IVE的简介、成员、专辑和歌曲。此外，帮我搜索关于ATEEZ这个KPOP组合的资料，关于ATEEZ的成员、专辑和歌曲。另外，还有关于HoneyWorks这个日本组合的资料
+        你的输出：搜索IVE这个KPOP组合的简介、成员、专辑和歌曲&&搜索ATEEZ这个KPOP组合的成员、专辑和歌曲&&搜索HoneyWorks这个日本组合的资料
+
+        示例3：
+        用户输入：搜索关于IVE这个KPOP组合的资料
+        你的输出：搜索IVE这个KPOP组合的资料
+
+        注意事项
+        - 仔细阅读用户输入，识别出所有不同的搜索主体。
+        - 每个主体对应一个任务，即使对同一个主体有多个描述，也只生成一个任务提示词。
+        - 任务提示词应准确反映用户要求搜索的具体内容，尽量保留用户的原词。
+        - 如果用户对某个主体没有指定具体范围，则使用“资料”概括。
+        - 确保输出格式严格遵循要求：多个任务用“&&”分隔。
+        
+        请严格按照上述格式和示例执行。"""
+
+        # Decompose the prompt into task prompts
+        res: dict[str, Any] = self.__send_request(
+            self.openai_comp_api_key,
+            [
+                {
+                    "role": "user",
+                    "content": prompt.format(prompt = u_prompt)
+                }
+            ],
+            self.model,
+            self.openai_comp_api_base_url
+        )
+
+        # Return the decomposed task prompts
+        return [ i.strip() for i in res["choices"][0]["message"]["content"].split("&&") ]
+
     def storm_with_summary(self, prompt: str, summary: str) -> list[str]:
         """
         Generate auxiliary queries based on the prompt and summary of the search results.

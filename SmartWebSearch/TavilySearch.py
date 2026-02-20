@@ -704,6 +704,39 @@ class TavilySearch:
         # Return the parsed markdown
         return parsed_markdown
     
+    def __fetch(self, url: str) -> str:
+        """
+        Fetch the page source.
+
+        Args:
+            url (str): The url of the page.
+
+        Returns:
+            str: The page source.
+        """
+
+        # Create a chrome driver
+        chrome_driver: ChromeDriver = ChromeDriver()
+
+        try:
+            # Load the URL
+            chrome_driver.driver.get(url)
+
+            # Get the page source
+            page_source: str = chrome_driver.driver.page_source
+
+        except Exception:
+            # Request timeout
+            # Return an empty string
+            return ""
+        
+        finally:
+            # Quit the driver
+            chrome_driver.quit()
+
+        # Return the page source
+        return page_source
+
     def __parse(self, search_result: _SearchResult, search_results: list[_SearchResult], total_results: int = 0) -> None:
         """
         Fetch and parse the page source, extract the page content, store it in the page_content attribute of the search result and append it to the list of search results.
@@ -723,17 +756,14 @@ class TavilySearch:
         # Process the parsing task
         show_debug(f"Processing parsing task for URL: {search_result.url}", importance = "LOW")
 
-        # Load the url in the browser
+        # Load the URL in the browser
         show_debug(f"Loading URL: {search_result.url}", importance = "LOW")
 
-        # Load the URL
-        try:
-            chrome_driver.driver.get(search_result.url)
+        # Get the page source
+        page_source: str = self.__fetch(search_result.url)
 
-            # Get the page source
-            page_source: str = chrome_driver.driver.page_source
-            
-        except Exception:
+        # If the page source is empty
+        if not page_source:
             show_debug(f"Request timed out, returning empty content: {search_result.url}", type = "ERROR")
 
             # Append the search result to the search results list
@@ -743,10 +773,6 @@ class TavilySearch:
 
             # Return
             return
-        
-        finally:
-            # Quit the ChromeDriver object
-            chrome_driver.quit()
 
         show_debug(f"Fetched URL: {search_result.url}", importance = "LOW")
 
@@ -764,7 +790,8 @@ class TavilySearch:
         )
 
         # Set the page content to the parsed markdown
-        search_result.page_content.content = parsed_markdown
+        # Get the first 80,000 characters of the parsed markdown only if parsed markdown has more than 80,000 characters
+        search_result.page_content.content = parsed_markdown[:80000]
         
         # Append the search result to the search results list
         search_results.append(search_result)

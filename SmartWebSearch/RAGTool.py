@@ -11,6 +11,7 @@ from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing import Any
 from SmartWebSearch.Debugger import show_debug
+import datetime
 
 class _KnowledgeBase:
     """
@@ -147,11 +148,28 @@ class RAGTool:
         # Seperate the chunks into several chunk sets every 30 chunks
         chunk_sets: list[list[str]] = [chunks[i: i + 30] for i in range(0, len(chunks), 30)]
 
+        # Set a timedelta for storing the the completion time for each knowledge base
+        timedelta: datetime.timedelta = datetime.timedelta()
+        
         # Encode the chunk sets into vector sets
         knowledge_vector_set: list[np.ndarray] = []
+
+        show_debug(f"Creating knowledge base set...")
         for idx, chunk_set in enumerate(chunk_sets, start = 1):
-            show_debug(f"Creating knowledge base set {idx}/{len(chunk_sets)}...")
+            # Get the start time
+            start_time: datetime.datetime = datetime.datetime.now()
+
+            # Encode the chunk set into a vector set
             knowledge_vector_set.append(embedding_model.encode(chunk_set))
+
+            # Get the end time
+            end_time: datetime.datetime = datetime.datetime.now()
+
+            # Calculate the timedelta
+            timedelta: datetime.timedelta = end_time - start_time if end_time - start_time > timedelta else timedelta
+
+            # Print the progress
+            show_debug(f"Created knowledge base set {idx}/{len(chunk_sets)} {f'(Expected completion time: {((datetime.datetime.now() + (timedelta) * (len(chunk_set) - idx)) + datetime.timedelta(minutes = 7)).strftime('%H:%M:%S')})...' if len(chunk_set) - idx > 0 else ''}")
         
         show_debug(f"Knowledge base set created.")
 
@@ -177,7 +195,7 @@ class RAGTool:
         # Initialize the text splitter
         self.text_splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(
             chunk_size = 600,
-            chunk_overlap = 80
+            chunk_overlap = 50
         )
 
         # Initialize the SentenceTransformer model
@@ -199,7 +217,7 @@ class RAGTool:
 
         return knowledge_base_set
 
-    def match_knowledge(self, knowledge_base: _KnowledgeBase | _KnowledgeBaseSet, prompt: str, top_k: int = 10, threshold_score: float = 0.57) -> list[tuple[float, str]]:
+    def match_knowledge(self, knowledge_base: _KnowledgeBase | _KnowledgeBaseSet, prompt: str, top_k: int = 10, threshold_score: float = 0.6) -> list[tuple[float, str]]:
         """
         Match the prompt with the knowledge base.
 
@@ -207,7 +225,7 @@ class RAGTool:
             knowledge_base (_KnowledgeBase | _KnowledgeBaseSet): The knowledge base.
             prompt (str): The prompt to be matched.
             top_k (int) = 10: The number of top matches to return.
-            threshold_score (float) = 0.57: The threshold score for the top matches.
+            threshold_score (float) = 0.6: The threshold score for the top matches.
 
         Returns:
             list[tuple[float, str]]: The top matches with their scores and the corresponding chunks.
