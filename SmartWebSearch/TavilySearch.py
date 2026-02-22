@@ -577,11 +577,6 @@ class TavilySearch:
 
             # Start the thread
             thread.start()
-            
-            # If active threads are more than 5, wait for a second
-            # Prevent too many threads running at the same time
-            while active_count() > 5:
-                time.sleep(1)
 
         # Wait for all threads to finish if page content is included
         if include_page_content:
@@ -751,9 +746,6 @@ class TavilySearch:
             None
         """
 
-        # Create a chrome driver
-        chrome_driver: ChromeDriver = ChromeDriver()
-
         # Process the parsing task
         show_debug(f"Processing parsing task for URL: {search_result.url}", importance = "LOW")
 
@@ -791,13 +783,16 @@ class TavilySearch:
         )
 
         # Set the page content to the parsed markdown
-        # Get the first 80,000 characters of the parsed markdown only if parsed markdown has more than 100,000 characters
-        search_result.page_content.content = parsed_markdown[:100000]
+        # Get the first 150,000 characters of the parsed markdown only if parsed markdown has more than 150,000 characters
+        search_result.page_content.content = parsed_markdown[:150000]
         
         # Append the search result to the search results list
         search_results.append(search_result)
 
         show_debug(f"Finished parsing task {len(search_results)}/{total_results}")
+
+        # Sleep 0.1 seconds
+        time.sleep(0.1)
 
     def search(self, query: str, include_page_content: bool = True, max_results: int = 10) -> _SearchResults:
         """

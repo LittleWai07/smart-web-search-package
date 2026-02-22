@@ -51,10 +51,13 @@ import socket
 app = Flask(__name__)
 is_searching = False
 
+# Create an empty sws variable
+sws = None
+
 # Routes
 @app.route('/search', methods=['POST'])
 def search():
-    global is_searching
+    global is_searching, sws
 
     # Check if the request is JSON
     if request.headers.get("Content-Type") != "application/json":
@@ -77,7 +80,9 @@ def search():
 
     # Try to search
     try:
-        sws = SmartWebSearch(ts_key, ds_key)
+        sws = SmartWebSearch(ts_key, ds_key) if not sws else sws
+        sws.change_api_keys(ts_key, ds_key)
+
         is_searching = True
         summary = sws.search(prompt)
     except InvalidKeyError as e:
@@ -92,7 +97,7 @@ def search():
 
 @app.route('/deepsearch', methods=['POST'])
 def deepsearch():
-    global is_searching
+    global is_searching, sws
 
     # Check if the request is JSON
     if request.headers.get("Content-Type") != "application/json":
@@ -115,12 +120,16 @@ def deepsearch():
 
     # Try to search
     try:
-        sws = SmartWebSearch(ts_key, ds_key)
+        sws = SmartWebSearch(ts_key, ds_key) if not sws else sws
+        sws.change_api_keys(ts_key, ds_key)
+
         is_searching = True
         summary = sws.deepsearch(prompt)
     except InvalidKeyError as e:
+        print(e)
         return {"error": str(e)}, 401
     except Exception as e:
+        print(e)
         return {"error": str(e)}, 500
     finally:
         is_searching = False

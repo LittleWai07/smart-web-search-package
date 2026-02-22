@@ -68,6 +68,37 @@ class SmartWebSearch:
         self.smr: Summarizer = Summarizer(openai_comp_api_key, model, openai_comp_api_base_url)
         self.qs: QueryStorm = QueryStorm(openai_comp_api_key, model, openai_comp_api_base_url)
 
+    def change_api_keys(self, ts_api_key: str, openai_comp_api_key: str, model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> None:
+        """
+        Change the API keys of the SmartWebSearch object.
+
+        Args:
+            ts_api_key (str): The Tavily API key.
+            openai_comp_api_key (str): The OpenAI Compatible API key.
+            model (str): The model to use.
+            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
+
+        Returns:
+            None
+        """
+
+        # Change the API keys
+        self.ts_api_key: str = ts_api_key
+        self.smr.openai_comp_api_key = openai_comp_api_key
+        self.qs.openai_comp_api_key = openai_comp_api_key
+
+        # Change the model
+        self.smr.model = model
+        self.qs.model = model
+
+        # Change the OpenAI Compatible API base URL
+        self.smr.openai_comp_api_base_url = openai_comp_api_base_url
+        self.qs.openai_comp_api_base_url = openai_comp_api_base_url
+
+        # Check the OpenAI Compatible API key
+        KeyCheck.check_tavily_api_key(ts_api_key)
+        KeyCheck.check_openai_comp_api_key(openai_comp_api_key, model, openai_comp_api_base_url)
+
     def search(self, prompt: str) -> str:
         """
         Perform a normal search using the Tavily API.
@@ -140,17 +171,21 @@ class SmartWebSearch:
             aux_queries_list.append(a_queries)
 
             # Search with main query
-            results: _SearchResults | list[_SearchResult] = ts.search(m_query, max_results = 15)
+            results: _SearchResults | list[_SearchResults] = ts.search(m_query, max_results = 15)
             summary = results.summary
             src.append(results)
 
             if a_queries:
                 # Search with auxiliary queries
-                results: _SearchResults | list[_SearchResult] = ts.search_d(m_query, a_queries, max_results_for_each = 15)
+                results: _SearchResults | list[_SearchResults] = ts.search_d(m_query, a_queries, max_results_for_each = 15)
                 src.append(results)
 
-            # If the length of the search results content less than 120,000, generate more queries with the summary
-            if len(src.to_str(False)) < 120000:
+                # Concatenate the summaries of the search results
+                for res in results:
+                    summary += '\n' + res.summary
+
+            # If the length of the search results content less than 200,000, generate more queries with the summary
+            if len(src.to_str(False)) < 200000:
                 # Generate queries
                 a_queries: list[str] = self.qs.storm_with_summary(task, summary)
                 aux_queries_list.append(a_queries)
@@ -170,7 +205,7 @@ class SmartWebSearch:
         for task in task_queries:
             m_query: str = task[0]
             for a_query in task[1]:
-                matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 15, threshold_score = 0.6))
+                matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 20, threshold_score = 0.81))
 
         # Generate conclusion
         conclusion = self.smr.summarize(prompt, "\n".join(src.get_summaries() + [match[1] for match in matches]))
