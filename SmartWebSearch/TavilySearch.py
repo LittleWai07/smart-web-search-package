@@ -15,6 +15,7 @@ from SmartWebSearch.Debugger import show_debug, create_debug_file
 from SmartWebSearch.ChromeDriver import ChromeDriver
 from SmartWebSearch.KeyCheck import KeyCheck
 from threading import Thread, active_count
+from SmartWebSearch.Progress import Progress
 import time
 
 if TYPE_CHECKING:
@@ -438,6 +439,9 @@ class TavilySearch:
         # Initialize the TavilyClient object
         self.client: TavilyClient = TavilyClient(api_key)
 
+        # Initialize the Progress object
+        self.progress: Progress = Progress()
+
         # Set the API key
         self.api_key: str = api_key
 
@@ -453,6 +457,9 @@ class TavilySearch:
         Returns:
             _SearchResults: The search results.
         """
+
+        # Update progress
+        self.progress._update_progress('SEARCHING', f"Searching for '{query}'")
 
         # Search for a query using Tavily API
         results: dict[str, Any] = dict(
@@ -538,12 +545,8 @@ class TavilySearch:
         show_debug(f"Summary for the results: {results['answer']}", importance = "LOW")
 
         # Create a list to store search results
-        search_results: list[_SearchResult] = []
-
-        # Loop through the results
-        for idx, result in enumerate(results["results"], start = 1):
-            # Create a SearchResult object
-            search_result: _SearchResult = _SearchResult(
+        search_results: list[_SearchResult] = [
+            _SearchResult(
                 id = idx, # The id of the result
                 title = result["title"], # The title of the page
                 url = result["url"], # The url of the page
@@ -554,45 +557,91 @@ class TavilySearch:
                     content = "" # The content of the page (an empty string now, it will be added later)
                 ) if include_page_content else None
             )
+            for idx, result in enumerate(results["results"], start = 1)
+        ]
 
-            # If page content is not included, skip parsing
-            if not include_page_content:
-                # Add the _SearchResult object to the search_results list
-                search_results.append(search_result)
-                continue
+        # Update progress
+        self.progress._update_progress('SEARCHED', f"Found {len(results['results'])} results for query: '{query}'", {
+            "query": query,
+            "summary": results["answer"],
+            "results": search_results,
+            "total_results": len(results["results"])
+        })
 
+        # If page content is not included, return the search results
+        if not include_page_content:
+            search_results_obj: _SearchResults = _SearchResults(
+                query = query, # The search query
+                summary = results["answer"] if "answer" in results else "", # The summary of the search results
+                results = search_results
+            )
+
+            self.progress._update_progress('PART_COMPLETED', f"Completed searching for query: '{query}'", {
+                "query": query,
+                "summary": results["answer"],
+                "results": search_results_obj,
+                "total_content_length": None,
+                "total_results": len(results["results"])
+            })
+
+            return search_results_obj
+        
+        # If page content is included
+        
+        # Create a list to store parsed search results
+        parsed_search_results: list[_SearchResult] = []
+
+        # Loop through the results
+        for search_result in search_results:
             # Parse the page in threads
             # The parse function will fetch the page content, and parse and filter it
             # Then it will add the page content to the _SearchResult object
-            # Finally, it will add the _SearchResult object to the search_results list
-            thread: Thread = Thread(
-                target = self.__parse,
-                args = (
-                    search_result,
-                    search_results,
-                    len(results["results"])
-                )
-            )
+            # Finally, it will add the _SearchResult object to the parsed_search_results list
+            thread: Thread = Thread(target = self.__parse, args = (
+                query,
+                search_result,
+                parsed_search_results,
+                len(results["results"])
+            ))
             thread.daemon = True
 
             # Start the thread
             thread.start()
 
-        # Wait for all threads to finish if page content is included
-        if include_page_content:
-            # Wait until all threads are done
-            while len(search_results) < len(results["results"]):
-                pass
+        # Wait until all threads are done
+        while len(parsed_search_results) < len(results["results"]):
+            pass
 
-            show_debug(f"{len(search_results)} results parsed for query: {query}, total content length is {sum([ len(result.page_content.content) for result in search_results ])} characters")
+        # Calculate the total content length
+        total_content_length: int = sum([ len(result.page_content.content) for result in parsed_search_results ])
 
-        # Return the results
+        show_debug(f"{len(search_results)} results parsed for query: {query}, total content length is {total_content_length} characters")
 
-        return _SearchResults(
+        # Update progress
+        self.progress._update_progress('PARSED', f"Parsed {len(search_results)} results for query: '{query}', total content length is {total_content_length} characters", {
+            "query": query,
+            "summary": results["answer"],
+            "results": parsed_search_results,
+            "total_content_length": total_content_length,
+            "total_results": len(search_results)
+        })
+
+        # Create the _SearchResults object
+        search_results_obj: _SearchResults = _SearchResults(
             query = query.replace(' ', '+'), # The query to search
             summary = results["answer"] if results["answer"] else "", # The summary
-            results = search_results
+            results = parsed_search_results
         )
+
+        self.progress._update_progress('PART_COMPLETED', f"Completed searching for query: '{query}'", {
+            "query": query,
+            "summary": results["answer"],
+            "results": search_results_obj,
+            "total_results": len(results["results"])
+        })
+
+        # Return the results
+        return search_results_obj
     
     def __filter(self, html_source: str, url: str) -> str:
         """
@@ -733,11 +782,12 @@ class TavilySearch:
         # Return the page source
         return page_source
 
-    def __parse(self, search_result: _SearchResult, search_results: list[_SearchResult], total_results: int = 0) -> None:
+    def __parse(self, query: str, search_result: _SearchResult, search_results: list[_SearchResult], total_results: int = 0) -> None:
         """
         Fetch and parse the page source, extract the page content, store it in the page_content attribute of the search result and append it to the list of search results.
 
         Args:
+            query (str): The search query.
             search_result (_SearchResult): The search result.
             search_results (list[_SearchResult]): The list of search results.
             total_results (int): The total number of results.
@@ -749,32 +799,40 @@ class TavilySearch:
         # Process the parsing task
         show_debug(f"Processing parsing task for URL: {search_result.url}", importance = "LOW")
 
-        # Load the URL in the browser
-        show_debug(f"Loading URL: {search_result.url}", importance = "LOW")
+        # Fetch the URL in the browser
+        show_debug(f"Fetching URL: {search_result.url}", importance = "LOW")
 
         # Get the page source
         page_source: str = self.__fetch(search_result.url)
 
         # If the page source is empty
         if not page_source:
-            show_debug(f"Request timed out, returning empty content: {search_result.url}", type = "ERROR")
-
             # Append the search result to the search results list
             search_results.append(search_result)
 
+            show_debug(f"Request timed out, returned empty content, URL: {search_result.url}", type = "ERROR")
             show_debug(f"Finished parsing task {len(search_results)}/{total_results}")
+
+            # Update the progress
+            self.progress._update_progress('PARSING', f"Request timed out, returned empty content, parsed {len(search_results)}/{total_results} results for query '{query}'", {
+                "error": "REQUEST_TIMEOUT",
+                "query": query,
+                "current": len(search_results),
+                "total": total_results,
+                "search_result": search_result
+            }, len(search_results) / total_results)
 
             # Return
             return
 
         show_debug(f"Fetched URL: {search_result.url}", importance = "LOW")
 
-        show_debug(f"Parsing content from URL: {search_result.url}", importance = "LOW")
+        show_debug(f"Filtering content from URL: {search_result.url}", importance = "LOW")
 
         # Parse the page source
         parsed_markdown: str = self.__filter(page_source, search_result.url)        
 
-        show_debug(f"Parsed content from URL: {search_result.url}, length: {len(parsed_markdown)}", importance = "LOW")
+        show_debug(f"Filtered content from URL: {search_result.url}, length: {len(parsed_markdown)}", importance = "LOW")
 
         create_debug_file(
             filename = f"parsed-content",
@@ -790,6 +848,15 @@ class TavilySearch:
         search_results.append(search_result)
 
         show_debug(f"Finished parsing task {len(search_results)}/{total_results}")
+
+        # Update the progress
+        self.progress._update_progress('PARSING', f"Parsed {len(search_results)}/{total_results} results for query '{query}'", {
+            "error": None,
+            "query": query,
+            "current": len(search_results),
+            "total": total_results,
+            "search_result": search_result
+        }, len(search_results) / total_results)
 
         # Sleep 0.1 seconds
         time.sleep(0.1)
@@ -810,6 +877,14 @@ class TavilySearch:
         show_debug(f"Searching for query: {query.replace(' ', '+')}")
 
         results: _SearchResults = self.__search(query.replace(' ', '+'), max_results, include_page_content)
+
+        # Update the progress
+        self.progress._update_progress('COMPLETED', f"Found {len(results.results)} results for query {query}", {
+            "query": query,
+            "search_results": results
+        })
+
+        self.progress._update_progress('IDLE')
 
         # Return the search results
         return results
@@ -849,6 +924,14 @@ class TavilySearch:
             show_debug(f"Searching for query: {current_query.replace(' ', '+')}")
 
             results.append(self.__search(current_query.replace(' ', '+'), max_results_for_each, include_page_content))
+
+        # Update the progress
+        self.progress._update_progress('COMPLETED', f"Found {sum([len(search_results.results) for search_results in results])} results for query '{query}' with auxiliary queries {', '.join([f'\'{aux_query}\'' for aux_query in aux_queries])}", {
+            "query": query,
+            "search_results": results
+        })
+
+        self.progress._update_progress('IDLE')
 
         # Return the search results
         return results

@@ -11,6 +11,7 @@ from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing import Any
 from SmartWebSearch.Debugger import show_debug
+from SmartWebSearch.Progress import Progress, _ProgressData
 import datetime
 
 class _KnowledgeBase:
@@ -110,12 +111,15 @@ class RAGTool:
     """
 
     @staticmethod
-    def __build_knowledge_base(text_data: str, embedding_model: SentenceTransformer, text_splitter: RecursiveCharacterTextSplitter) -> _KnowledgeBaseSet:
+    def __build_knowledge_base(text_data: str, embedding_model: SentenceTransformer, text_splitter: RecursiveCharacterTextSplitter, progress: Progress) -> _KnowledgeBaseSet:
         """
         Build the knowledge base from the text data.
 
         Args:
             text_data (str): The text data to be used as knowledge.
+            embedding_model (SentenceTransformer): The embedding model.
+            text_splitter (RecursiveCharacterTextSplitter): The text splitter.
+            progress (Progress): The progress object.
 
         Returns:
             _KnowledgeBaseSet: The knowledge base set.
@@ -171,9 +175,18 @@ class RAGTool:
             # Calculate the timedelta
             timedelta: datetime.timedelta = end_time - start_time if end_time - start_time > timedelta else timedelta
 
-            # Print the progress
-            show_debug(f"Created knowledge base set {idx}/{len(chunk_sets)} {f'(Expected completion time: {(datetime.datetime.now() + (timedelta) * (len(chunk_sets) - idx)).strftime('%H:%M:%S')})...' if len(chunk_sets) - idx > 0 else ''}")
+            # Update the progress
+            progress._update_progress('KL_BASE_CREATING', f"Created knowledge base set {idx}/{len(chunk_sets)}.", {
+                "current": idx,
+                "total": len(chunk_sets),
+                "eta": (timedelta) * (len(chunk_sets) - idx)
+            }, idx / len(chunk_sets))
+
+            show_debug(f"Created knowledge base set {idx}/{len(chunk_sets)} {f'(Expected completion time: {(datetime.datetime.now() + (timedelta) * (len(chunk_sets) - idx)).strftime('%H:%M:%S')})...' if len(chunk_sets) - idx > 0 else ''}")    
         
+        # Update the progress
+        progress._update_progress('KL_BASE_CREATED', f"Knowledge base set created.")
+
         show_debug(f"Knowledge base set created.")
 
         # Create knowledge base objects for each set
@@ -204,6 +217,9 @@ class RAGTool:
         # Initialize the SentenceTransformer model
         self.embedding_model: SentenceTransformer = SentenceTransformer(embedding_model_name)
 
+        # Initialize the Progress object
+        self.progress: Progress = Progress()
+
     def build_knowledge(self, text_data: str) -> _KnowledgeBaseSet:
         """
         Build the knowledge base from the text data.
@@ -216,7 +232,14 @@ class RAGTool:
         """
 
         # Build the knowledge base
-        knowledge_base_set: _KnowledgeBaseSet = self.__build_knowledge_base(text_data, self.embedding_model, self.text_splitter)
+        knowledge_base_set: _KnowledgeBaseSet = self.__build_knowledge_base(text_data, self.embedding_model, self.text_splitter, self.progress)
+
+        # Update the progress
+        self.progress._update_progress('COMPLETED', f"Knowledge base set created.", {
+            "knowledge_base_set": knowledge_base_set
+        })
+
+        self.progress._update_progress('IDLE')
 
         return knowledge_base_set
 
@@ -234,5 +257,30 @@ class RAGTool:
             list[tuple[float, str]]: The top matches with their scores and the corresponding chunks.
         """
 
+        # Update the progress
+        self.progress._update_progress('KL_BASE_MATCHING', f"Matching knowledge base.", {
+            "knowledge_base": knowledge_base,
+            "prompt": prompt,
+            "top_k": top_k,
+            "threshold_score": threshold_score
+        })
+
+        show_debug(f"Matching knowledge base...")
+
         # Match the prompt with the knowledge base
-        return knowledge_base.match_knowledge(self.embedding_model, prompt, top_k, threshold_score)
+        matched_results: list[tuple[float, str]] = knowledge_base.match_knowledge(self.embedding_model, prompt, top_k, threshold_score)
+
+        # Update the progress
+        self.progress._update_progress('KL_BASE_MATCHED', f"Knowledge base matched.", {
+            "knowledge_base": knowledge_base,
+            "prompt": prompt,
+            "top_k": top_k,
+            "threshold_score": threshold_score,
+            "matched_results": matched_results
+        })
+
+        show_debug(f"Knowledge base matched.")
+
+        self.progress._update_progress('IDLE')
+
+        return matched_results
