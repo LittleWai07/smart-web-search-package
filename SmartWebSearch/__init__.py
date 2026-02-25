@@ -12,7 +12,7 @@ from SmartWebSearch.Summarizer import Summarizer
 from SmartWebSearch.QueryStorm import QueryStorm
 from SmartWebSearch.Debugger import DebuggerConfiguration
 from SmartWebSearch.KeyCheck import KeyCheck, InvalidKeyError
-from SmartWebSearch.Progress import Progress, _ProgressData
+from SmartWebSearch.Progress import Progress, _ProgressData, _ProgressStatusSelector
 from typing import Callable, Any
 
 # Set the debugging mode
