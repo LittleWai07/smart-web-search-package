@@ -276,7 +276,8 @@ class RAGTool:
             "prompt": prompt,
             "top_k": top_k,
             "threshold_score": threshold_score,
-            "matched_results": matched_results
+            "matched_results": matched_results,
+            "total_matched_results": len(matched_results)
         })
 
         show_debug(f"Knowledge base matched.")

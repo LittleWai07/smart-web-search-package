@@ -325,8 +325,8 @@ class SmartWebSearch:
                 for res in results:
                     summary += '\n' + res.summary
 
-            # If the length of the search results content less than 200,000, generate more queries with the summary
-            if len(src.to_str(False)) < 200000:
+            # If the length of the search results content less than 600,000, generate more queries with the summary
+            if len(src.to_str(False)) < 600000:
                 # Generate queries
                 a_queries: list[str] = self.qs.storm_with_summary(task, summary)
                 aux_queries_list.append(a_queries)
@@ -346,7 +346,7 @@ class SmartWebSearch:
         for task in task_queries:
             m_query: str = task[0]
             for a_query in task[1]:
-                matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 20, threshold_score = 0.81))
+                matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 10, threshold_score = 0.81))
 
         # Update progress
         self.progress._update_progress('CONCLUDING', f"Concluding the summaries and matches for the prompt '{prompt}'", {
