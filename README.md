@@ -6,7 +6,7 @@
 SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 ## Package Version
-- 1.3.1
+- 1.3.2
 
 ## Features
 - 🌐 **Web Search** – Uses Tavily API to fetch relevant search results.
@@ -64,7 +64,7 @@ import SmartWebSearch as sws
 # --------------------------------------------------------------------
 
 # Example 1: Using DeepSeek (default)
-search = sws.SmartWebSearch(
+search: sws.SmartWebSearch = sws.SmartWebSearch(
     "<Tavily API Key>",
     "<OpenAI Compatible API Key>",
     model="deepseek-chat",
@@ -72,7 +72,7 @@ search = sws.SmartWebSearch(
 )
 
 # Example 2: Using OpenAI
-# search = sws.SmartWebSearch(
+# search: sws.SmartWebSearch = sws.SmartWebSearch(
 #     "<Tavily API Key>",
 #     "<OpenAI Compatible API Key>",
 #     model="gpt-4-turbo-preview",
@@ -80,15 +80,21 @@ search = sws.SmartWebSearch(
 # )
 
 # --------------------------------------------------------------------
+# Define a callback function for streaming the summary results
+# --------------------------------------------------------------------
+def stream_summary_callback(token: str):
+    print(token, end='', flush=True)
+
+# --------------------------------------------------------------------
 # Run a search
 # --------------------------------------------------------------------
 prompt = input("Enter a prompt: ")
 
 print("=== Normal Search (Tavily summaries) ===")
-print(search.search(prompt))
+search.search(prompt, stream_summary_callback)
 
 print("\n=== Deep Search (full page content + RAG) ===")
-print(search.deepsearch(prompt))
+search.deepsearch(prompt, stream_summary_callback)
 ```
 
 **Note**: The documentation of this package will be completed in the future.
