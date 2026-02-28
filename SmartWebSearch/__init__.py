@@ -22,7 +22,7 @@ DebuggerConfiguration.CREATE_DEBUG_FILES = False
 DebuggerConfiguration.SKIP_LOW_IMPORTANCE = True
 
 # Print the version of the package
-__version__ = "1.3.3"
+__version__ = "1.3.4"
 
 # Print the name of the package
 __name__ = "SmartWebSearch"

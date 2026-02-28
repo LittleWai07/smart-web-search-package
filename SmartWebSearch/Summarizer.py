@@ -202,7 +202,7 @@ class Summarizer:
                     None
                 """
 
-                return stream_cb(res["choices"][0]["delta"]["content"])
+                return stream_cb(res["choices"][0]["delta"]["content"] if res["choices"][0]["delta"]["content"] else '')
 
             # Send a request to the OpenAI Compatible API in stream mode
             res: dict[str, Any] = Summarizer.__send_request_with_stream(
