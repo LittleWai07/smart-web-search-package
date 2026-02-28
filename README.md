@@ -6,7 +6,7 @@
 SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 ## Package Version
-- 1.2.2
+- 1.2.3
 
 ## Features
 - 🌐 **Web Search** – Uses Tavily API to fetch relevant search results.
@@ -21,6 +21,13 @@ SmartWebSearch is a Python package that combines the Tavily search API with Retr
 - **Python Packages** (requests, bs4, selenium, markdownify, tavily, numpy, sentence_transformers, langchain_text_splitters)
 
 ## Installation
+
+### Method 1
+
+- **PYPI**: Install the SmartWebSearch package from PYPI through command `pip install smartwebsearch`
+
+### Method 2
+
 - **The SmartWebSearch Package**: Install the SmartWebSearch package [here](https://github.com/LittleWai07/smart-web-search-package/archive/refs/heads/main.zip) or with git command `git clone https://github.com/LittleWai07/smart-web-search-package.git` (Git is required to run this command)
 - **Required Python Packages**: Install the required Python packages by command `pip install -r requirements.txt`
 
