@@ -165,16 +165,14 @@ class SmartWebSearch:
 
         if a_queries:
             # Perform the search
-            results: list[_SearchResults] | _SearchResults = ts.search_d(m_query, a_queries, include_main_query = True, include_page_content = False)
+            results: list[_SearchResults] = ts.search_d(m_query, a_queries, include_main_query = True, include_page_content = False)
 
-            # Concatenate the summaries of the search results
-            content: str = '\n'.join([ result.summary for result in results ])
         else:
             # Perform the search
-            results: list[_SearchResults] | _SearchResults = ts.search(m_query, include_page_content = False)
+            results: list[_SearchResults] = [ts.search(m_query, include_page_content = False)]
 
-            # Concatenate the summaries of the search results
-            content: str = results.summary
+        # Concatenate the summaries of the search results
+        content: str = '\n'.join([ result.summary for result in results ])
 
         # Update progress
         self.progress._update_progress(pss.CONCLUDING, f"Concluding the content for the prompt '{prompt}'")
