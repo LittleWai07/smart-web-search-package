@@ -103,7 +103,7 @@ class Summarizer:
             stream_cb(json.loads(chunk))
 
             # Append the chunk to the content
-            content += json.loads(chunk)["choices"][0]["delta"]["content"]
+            content += json.loads(chunk)["choices"][0]["delta"]["content"] if json.loads(chunk)["choices"][0]["delta"].get("content") else ''
 
             # Update the usage
             if "usage" in json.loads(chunk):
