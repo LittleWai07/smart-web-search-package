@@ -13,7 +13,7 @@ from datetime import datetime
 _ProgressStatus: TypeAlias = Literal['IDLE', 'STORMING', 'STORMED', 'SEARCHING', 'SEARCHED', 'PARSING', 'PARSED', 'KL_BASE_CREATING', 'KL_BASE_CREATED', 'KL_BASE_MATCHING', 'KL_BASE_MATCHED', 'CONCLUDING', 'CONCLUDED', 'PART_COMPLETED', 'COMPLETED', 'REQUEST_TIMEOUT']
 
 # Progress Classes
-class _ProgressStatusSelector:
+class ProgressStatusSelector:
     """
     A class representing the status of a web searching operation.
     """

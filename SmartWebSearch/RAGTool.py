@@ -2,7 +2,7 @@
 SmartWebSearch.RAGTool
 ~~~~~~~~~~~~
 
-This module implements the RAGTool.
+This module implements the RAG tool.
 """
 
 # Import the required modules
@@ -12,6 +12,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from typing import Any
 from SmartWebSearch.Debugger import show_debug
 from SmartWebSearch.Progress import Progress, _ProgressData
+from SmartWebSearch.Progress import ProgressStatusSelector as pss
 import datetime
 
 class _KnowledgeBase:
@@ -176,7 +177,7 @@ class RAGTool:
             timedelta: datetime.timedelta = end_time - start_time if end_time - start_time > timedelta else timedelta
 
             # Update the progress
-            progress._update_progress('KL_BASE_CREATING', f"Created knowledge base set {idx}/{len(chunk_sets)}.", {
+            progress._update_progress(pss.KL_BASE_CREATING, f"Created knowledge base set {idx}/{len(chunk_sets)}.", {
                 "current": idx,
                 "total": len(chunk_sets),
                 "eta": (timedelta) * (len(chunk_sets) - idx)
@@ -185,7 +186,7 @@ class RAGTool:
             show_debug(f"Created knowledge base set {idx}/{len(chunk_sets)} {f'(Expected completion time: {(datetime.datetime.now() + (timedelta) * (len(chunk_sets) - idx)).strftime('%H:%M:%S')})...' if len(chunk_sets) - idx > 0 else ''}")    
         
         # Update the progress
-        progress._update_progress('KL_BASE_CREATED', f"Knowledge base set created.")
+        progress._update_progress(pss.KL_BASE_CREATED, f"Knowledge base set created.")
 
         show_debug(f"Knowledge base set created.")
 
@@ -235,11 +236,11 @@ class RAGTool:
         knowledge_base_set: _KnowledgeBaseSet = self.__build_knowledge_base(text_data, self.embedding_model, self.text_splitter, self.progress)
 
         # Update the progress
-        self.progress._update_progress('COMPLETED', f"Knowledge base set created.", {
+        self.progress._update_progress(pss.COMPLETED, f"Knowledge base set created.", {
             "knowledge_base_set": knowledge_base_set
         })
 
-        self.progress._update_progress('IDLE')
+        self.progress._update_progress(pss.IDLE)
 
         return knowledge_base_set
 
@@ -258,7 +259,7 @@ class RAGTool:
         """
 
         # Update the progress
-        self.progress._update_progress('KL_BASE_MATCHING', f"Matching knowledge base.", {
+        self.progress._update_progress(pss.KL_BASE_MATCHING, f"Matching knowledge base.", {
             "knowledge_base": knowledge_base,
             "prompt": prompt,
             "top_k": top_k,
@@ -271,7 +272,7 @@ class RAGTool:
         matched_results: list[tuple[float, str]] = knowledge_base.match_knowledge(self.embedding_model, prompt, top_k, threshold_score)
 
         # Update the progress
-        self.progress._update_progress('KL_BASE_MATCHED', f"Knowledge base matched.", {
+        self.progress._update_progress(pss.KL_BASE_MATCHED, f"Knowledge base matched.", {
             "knowledge_base": knowledge_base,
             "prompt": prompt,
             "top_k": top_k,
@@ -282,6 +283,6 @@ class RAGTool:
 
         show_debug(f"Knowledge base matched.")
 
-        self.progress._update_progress('IDLE')
+        self.progress._update_progress(pss.IDLE)
 
         return matched_results

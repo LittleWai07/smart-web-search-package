@@ -16,6 +16,7 @@ from SmartWebSearch.ChromeDriver import ChromeDriver
 from SmartWebSearch.KeyCheck import KeyCheck
 from threading import Thread, active_count
 from SmartWebSearch.Progress import Progress
+from SmartWebSearch.Progress import ProgressStatusSelector as pss
 import time
 
 if TYPE_CHECKING:
@@ -459,7 +460,7 @@ class TavilySearch:
         """
 
         # Update progress
-        self.progress._update_progress('SEARCHING', f"Searching for '{query}'")
+        self.progress._update_progress(pss.SEARCHING, f"Searching for '{query}'")
 
         # Search for a query using Tavily API
         results: dict[str, Any] = dict(
@@ -561,7 +562,7 @@ class TavilySearch:
         ]
 
         # Update progress
-        self.progress._update_progress('SEARCHED', f"Found {len(results['results'])} results for query: '{query}'", {
+        self.progress._update_progress(pss.SEARCHED, f"Found {len(results['results'])} results for query: '{query}'", {
             "query": query,
             "summary": results["answer"],
             "results": search_results,
@@ -576,7 +577,7 @@ class TavilySearch:
                 results = search_results
             )
 
-            self.progress._update_progress('PART_COMPLETED', f"Completed searching for query: '{query}'", {
+            self.progress._update_progress(pss.PART_COMPLETED, f"Completed searching for query: '{query}'", {
                 "query": query,
                 "summary": results["answer"],
                 "results": search_results_obj,
@@ -618,7 +619,7 @@ class TavilySearch:
         show_debug(f"{len(search_results)} results parsed for query: {query}, total content length is {total_content_length} characters")
 
         # Update progress
-        self.progress._update_progress('PARSED', f"Parsed {len(search_results)} results for query: '{query}', total content length is {total_content_length} characters", {
+        self.progress._update_progress(pss.PARSED, f"Parsed {len(search_results)} results for query: '{query}', total content length is {total_content_length} characters", {
             "query": query,
             "summary": results["answer"],
             "results": parsed_search_results,
@@ -633,7 +634,7 @@ class TavilySearch:
             results = parsed_search_results
         )
 
-        self.progress._update_progress('PART_COMPLETED', f"Completed searching for query: '{query}'", {
+        self.progress._update_progress(pss.PART_COMPLETED, f"Completed searching for query: '{query}'", {
             "query": query,
             "summary": results["answer"],
             "results": search_results_obj,
@@ -814,7 +815,7 @@ class TavilySearch:
             show_debug(f"Finished parsing task {len(search_results)}/{total_results}")
 
             # Update the progress
-            self.progress._update_progress('PARSING', f"Request timed out, returned empty content, parsed {len(search_results)}/{total_results} results for query '{query}'", {
+            self.progress._update_progress(pss.PARSED, f"Request timed out, returned empty content, parsed {len(search_results)}/{total_results} results for query '{query}'", {
                 "error": "REQUEST_TIMEOUT",
                 "query": query,
                 "current": len(search_results),
@@ -850,7 +851,7 @@ class TavilySearch:
         show_debug(f"Finished parsing task {len(search_results)}/{total_results}")
 
         # Update the progress
-        self.progress._update_progress('PARSING', f"Parsed {len(search_results)}/{total_results} results for query '{query}'", {
+        self.progress._update_progress(pss.PARSING, f"Parsed {len(search_results)}/{total_results} results for query '{query}'", {
             "error": None,
             "query": query,
             "current": len(search_results),
@@ -879,12 +880,12 @@ class TavilySearch:
         results: _SearchResults = self.__search(query.replace(' ', '+'), max_results, include_page_content)
 
         # Update the progress
-        self.progress._update_progress('COMPLETED', f"Found {len(results.results)} results for query {query}", {
+        self.progress._update_progress(pss.COMPLETED, f"Found {len(results.results)} results for query {query}", {
             "query": query,
             "search_results": results
         })
 
-        self.progress._update_progress('IDLE')
+        self.progress._update_progress(pss.IDLE)
 
         # Return the search results
         return results
@@ -926,12 +927,12 @@ class TavilySearch:
             results.append(self.__search(current_query.replace(' ', '+'), max_results_for_each, include_page_content))
 
         # Update the progress
-        self.progress._update_progress('COMPLETED', f"Found {sum([len(search_results.results) for search_results in results])} results for query '{query}' with auxiliary queries {', '.join([f'\'{aux_query}\'' for aux_query in aux_queries])}", {
+        self.progress._update_progress(pss.COMPLETED, f"Found {sum([len(search_results.results) for search_results in results])} results for query '{query}' with auxiliary queries {', '.join([f'\'{aux_query}\'' for aux_query in aux_queries])}", {
             "query": query,
             "search_results": results
         })
 
-        self.progress._update_progress('IDLE')
+        self.progress._update_progress(pss.IDLE)
 
         # Return the search results
         return results
