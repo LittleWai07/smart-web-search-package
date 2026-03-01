@@ -6,4 +6,5 @@ internal-*
 sws_config.json
 /sws_*.py
 /build
+/dist
 /SmartWebSearch.egg-info
