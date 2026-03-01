@@ -10,6 +10,7 @@ import requests, json
 from typing import Any, Callable
 from SmartWebSearch.KeyCheck import KeyCheck
 from datetime import datetime
+from SmartWebSearch.AIModel import AIModel
 
 # Summarizer Class
 class Summarizer:
@@ -17,146 +18,22 @@ class Summarizer:
     A class for summarizing the search results.
     """
 
-    @staticmethod
-    def __send_request(openai_comp_api_key: str, messages: list[dict[str, Any]], model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> dict[str, Any]:
-        """
-        Send a request to the OpenAI Compatible API.
+    # Constants
+    COMPLETION_ENDED: str = '[COMPLETION_ENDED]'
 
-        Args:
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            messages (list[dict[str, Any]]): The messages to send.
-            model (str): The model to use.
-            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
-
-        Returns:
-            dict[str, Any]: The response from the OpenAI Compatible API.
-        """
-
-        # Send a request to the OpenAI Compatible API
-        res: requests.Response = requests.post(
-            openai_comp_api_base_url,
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openai_comp_api_key}"
-            },
-            json = {
-                "model": model,
-                "messages": messages
-            }
-        )
-
-        # Raise an exception if the request fails
-        res.raise_for_status()
-
-        # Return the response
-        return res.json()
-    
-    def __send_request_with_stream(stream_cb: Callable[[dict[str, Any]], None], openai_comp_api_key: str, messages: list[dict[str, Any]], model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> dict[str, Any]:
-        """
-        Send a request to the OpenAI Compatible API with stream.
-
-        Args:
-            stream_cb (Callable[[dict[str, Any]], None]): The callback function for stream.
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            messages (list[dict[str, Any]]): The messages to send.
-            model (str): The model to use.
-            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
-
-        Returns:
-            dict[str, Any]: The response from the OpenAI Compatible API.
-        """
-
-        # Send a request to the OpenAI Compatible API
-        res: requests.Response = requests.post(
-            openai_comp_api_base_url,
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openai_comp_api_key}"
-            },
-            json = {
-                "model": model,
-                "stream": True,
-                "messages": messages
-            },
-            stream = True
-        )
-
-        # Raise an exception if the request fails
-        res.raise_for_status()
-
-        # Loop through the response iterator
-        content: str = ''
-        created: int = 0
-        system_fingerprint: str = ''
-        usage: dict[str, Any] = {}
-
-        for chunk in res.iter_lines():
-            if not chunk:
-                continue
-
-            # Parse each chunk to a dictionary data
-            chunk: str = chunk.decode("utf-8").replace("data:", "").strip()
-
-            if chunk == "[DONE]":
-                break
-
-            stream_cb(json.loads(chunk))
-
-            # Append the chunk to the content
-            content += json.loads(chunk)["choices"][0]["delta"]["content"] if json.loads(chunk)["choices"][0]["delta"].get("content") else ''
-
-            # Update the usage
-            if "usage" in json.loads(chunk):
-                usage: dict[str, Any] = json.loads(chunk)["usage"]
-
-            # Update the created
-            if "created" in json.loads(chunk):
-                created: int = json.loads(chunk)["created"]
-
-            # Update the system fingerprint
-            if "system_fingerprint" in json.loads(chunk):
-                system_fingerprint: str = json.loads(chunk)["system_fingerprint"]
-
-        # Return the response
-        return {
-            'created': created,
-            'object': 'chat.completion',
-            'model': model,
-            'system_fingerprint': system_fingerprint,
-            'choices': [
-                {
-                    'index': 0,
-                    'message': {
-                        'role': 'assistant',
-                        'content': content
-                    },
-                    'logprobs': None,
-                    'finish_reason': 'stop'
-                }
-            ],
-            'usage': usage
-        }
-
-    def __init__(self, openai_comp_api_key: str, model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> None:
+    def __init__(self, ai_model: AIModel) -> None:
         """
         Initialize the Summarizer object.
 
         Args:
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            model (str): The model to use.
-            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
+            ai_model (AIModel): The AIModel object.
 
         Returns:
             None
         """
         
         # Set the attributes of the Summarizer object
-        self.model: str = model
-        self.openai_comp_api_key: str = openai_comp_api_key
-        self.openai_comp_api_base_url: str = openai_comp_api_base_url
-
-        # Check the OpenAI Compatible API key
-        KeyCheck.check_openai_comp_api_key(openai_comp_api_key, model, openai_comp_api_base_url)
+        self.ai_model: AIModel = ai_model
 
     def summarize(self, u_prompt: str, data: str, stream_cb: Callable[[str], None] = None) -> str:
         """
@@ -205,30 +82,27 @@ class Summarizer:
                 return stream_cb(res["choices"][0]["delta"]["content"] if res["choices"][0]["delta"]["content"] else '')
 
             # Send a request to the OpenAI Compatible API in stream mode
-            res: dict[str, Any] = Summarizer.__send_request_with_stream(
-                grab_content,
-                self.openai_comp_api_key,
+            res: dict[str, Any] = self.ai_model.send_request_stream(
                 [
                     {
                         "role": "user",
                         "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                     }
                 ],
-                self.model,
-                self.openai_comp_api_base_url
+                grab_content
             )
+
+            # Send a completion end signal to the callback function
+            stream_cb(Summarizer.COMPLETION_ENDED)
         else:
             # Send a request to the OpenAI Compatible API in non-stream mode
-            res: dict[str, Any] = Summarizer.__send_request(
-                self.openai_comp_api_key,
+            res: dict[str, Any] = self.ai_model.send_request(
                 [
                     {
                         "role": "user",
                         "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                     }
-                ],
-                self.model,
-                self.openai_comp_api_base_url
+                ]
             )
 
         # Return the summary

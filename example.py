@@ -15,17 +15,21 @@ import SmartWebSearch as sws
 # Example 1: Using DeepSeek (default)
 search: sws.SmartWebSearch = sws.SmartWebSearch(
     "<Tavily API Key>",
-    "<OpenAI Compatible API Key>",
-    model="deepseek-chat",
-    openai_comp_api_base_url="https://api.deepseek.com/chat/completions"
+    sws.AIModel(
+        "<OpenAI Compatible API Key>",
+        model="deepseek-chat",
+        openai_comp_api_base_url="https://api.deepseek.com/chat/completions"
+    )
 )
 
 # Example 2: Using OpenAI
 # search: sws.SmartWebSearch = sws.SmartWebSearch(
 #     "<Tavily API Key>",
-#     "<OpenAI Compatible API Key>",
-#     model="gpt-4-turbo-preview",
-#     openai_comp_api_base_url="https://api.openai.com/v1/chat/completions"
+#     sws.AIModel(
+#         "<OpenAI Compatible API Key>",
+#         model="gpt-4-turbo-preview",
+#         openai_comp_api_base_url="https://api.openai.com/v1/chat/completions"
+#     )
 # )
 
 # --------------------------------------------------------------------

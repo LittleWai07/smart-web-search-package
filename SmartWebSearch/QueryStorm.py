@@ -8,7 +8,7 @@ This module implements the query brainstorm for the web searching module.
 # Import the required modules
 from typing import Any
 import requests
-from SmartWebSearch.KeyCheck import KeyCheck
+from SmartWebSearch.AIModel import AIModel
 
 # QueryStorm Class
 class QueryStorm:
@@ -16,59 +16,19 @@ class QueryStorm:
     A class for query brainstorming.
     """
 
-    @staticmethod
-    def __send_request(openai_comp_api_key: str, messages: list[dict[str, Any]], model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> dict[str, Any]:
-        """
-        Send a request to the OpenAI Compatible API.
-
-        Args:
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            messages (list[dict[str, Any]]): The messages to send.
-            model (str): The model to use.
-            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
-
-        Returns:
-            dict[str, Any]: The response from the OpenAI Compatible API.
-        """
-
-        # Send a request to the OpenAI Compatible API
-        res: requests.Response = requests.post(
-            openai_comp_api_base_url,
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openai_comp_api_key}"
-            },
-            json = {
-                "model": model,
-                "messages": messages
-            }
-        )
-
-        # Raise an exception if the request fails
-        res.raise_for_status()
-
-        # Return the response
-        return res.json()
-
-    def __init__(self, openai_comp_api_key: str, model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> None:
+    def __init__(self, ai_model: AIModel) -> None:
         """
         Initialize the QueryStorm object.
 
         Args:
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
+            ai_model (AIModel): The AIModel object.
 
         Returns:
             None
         """
 
         # Set the attributes of the QueryStorm object
-        self.model: str = model
-        self.openai_comp_api_key: str = openai_comp_api_key
-        self.openai_comp_api_base_url: str = openai_comp_api_base_url
-
-        # Check the OpenAI Compatible API key
-        KeyCheck.check_openai_comp_api_key(openai_comp_api_key, model, openai_comp_api_base_url)
+        self.ai_model: AIModel = ai_model
 
     def decompose_tasks_with_prompt(self, u_prompt: str) -> list[str]:
         """
@@ -121,16 +81,13 @@ class QueryStorm:
         请严格按照上述格式和示例执行。"""
 
         # Decompose the prompt into task prompts
-        res: dict[str, Any] = self.__send_request(
-            self.openai_comp_api_key,
+        res: dict[str, Any] = self.ai_model.send_request(
             [
                 {
                     "role": "user",
                     "content": prompt.format(prompt = u_prompt)
                 }
-            ],
-            self.model,
-            self.openai_comp_api_base_url
+            ]
         )
 
         # Return the decomposed task prompts
@@ -170,16 +127,13 @@ class QueryStorm:
         请严格按照上述格式和示例执行。"""
 
         # Generate queries based on the summary of the search results
-        res: dict[str, Any] = self.__send_request(
-            self.openai_comp_api_key,
+        res: dict[str, Any] = self.ai_model.send_request(
             [
                 {
                     "role": "user",
                     "content": prompt.format(prompt = prompt, summary = summary)
                 }
-            ],
-            self.model,
-            self.openai_comp_api_base_url
+            ]
         )
 
         # Return the generated queries
@@ -229,16 +183,13 @@ class QueryStorm:
         请严格遵循上述格式，确保输出的关键词准确、简洁，能够帮助用户进行高效的网络搜索。"""
 
         # Generate a query based on the prompt
-        res: dict[str, Any] = self.__send_request(
-            self.openai_comp_api_key,
+        res: dict[str, Any] = self.ai_model.send_request(
             [
                 {
                     "role": "user",
                     "content": prompt.format(prompt = u_prompt)
                 }
-            ],
-            self.model,
-            self.openai_comp_api_base_url
+            ]
         )
 
         # Return the generated queries

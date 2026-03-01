@@ -7,6 +7,10 @@ This module implements the KeyCheck Tool for the package.
 
 # Import the required modules
 import requests
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from SmartWebSearch.AIModel import AIModel
 
 # Exception Class
 class InvalidKeyError(Exception):
@@ -35,38 +39,19 @@ class KeyCheck:
 
     # Check if the OpenAI Compatible API key is valid
     @staticmethod
-    def check_openai_comp_api_key(openai_comp_api_key: str, model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> bool:
+    def check_openai_comp_api_key(ai_model: "AIModel") -> bool:
         """
         Check if the OpenAI Compatible API key is valid.
 
         Args:
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            model (str) = "deepseek-chat": The model to use.
-            openai_comp_api_base_url (str) = "https://api.deepseek.com/chat/completions": The OpenAI Compatible API base URL.
+            ai_model (AIModel): The AIModel object.
 
         Returns:
             bool: True if the key is valid, False otherwise.
         """
 
-        # Send a request to the OpenAI Compatible API to check if the key is valid
-        res: requests.Response = requests.post(
-            openai_comp_api_base_url,
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {openai_comp_api_key}"
-            },
-            json = {
-                "model": model,
-                "messages": [{"role": "user", "content": "Hello!"}]
-            }
-        )
-
-        # If the key is invalid, raise an exception
-        if res.status_code != 200 and KeyCheck.RAISE_ERROR:
-            raise InvalidKeyError(f"Invalid OpenAI Compatible API key: {openai_comp_api_key}")
-
         # Return True if the key is valid, False otherwise
-        return res.status_code == 200
+        return ai_model.check(KeyCheck.RAISE_ERROR)
     
     # Check if the Tavily API key is valid
     @staticmethod

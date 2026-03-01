@@ -6,7 +6,7 @@
 SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 ## Package Latest Version
-- 1.3.4
+- 1.3.5
 
 ## Features
 - 🌐 **Web Search** – Uses Tavily API to fetch relevant search results.
@@ -35,6 +35,8 @@ SmartWebSearch is a Python package that combines the Tavily search API with Retr
 You need two API keys
 - **Tavily API key**: Sign up and get the API key [here](https://www.tavily.com) (1,000 free quotas per month)
 - **OpenAI Compatible API key**: eg., from [OpenAI](https://platform.openai.com/), [DeepSeek](https://platform.deepseek.com/), etc.
+
+**Note**: Thinking model is **not recommended** to use due to the running efficiency.
 
 ## 🔒 Security Note
 
@@ -66,17 +68,21 @@ import SmartWebSearch as sws
 # Example 1: Using DeepSeek (default)
 search: sws.SmartWebSearch = sws.SmartWebSearch(
     "<Tavily API Key>",
-    "<OpenAI Compatible API Key>",
-    model="deepseek-chat",
-    openai_comp_api_base_url="https://api.deepseek.com/chat/completions"
+    sws.AIModel(
+        "<OpenAI Compatible API Key>",
+        model="deepseek-chat",
+        openai_comp_api_base_url="https://api.deepseek.com/chat/completions"
+    )
 )
 
 # Example 2: Using OpenAI
 # search: sws.SmartWebSearch = sws.SmartWebSearch(
 #     "<Tavily API Key>",
-#     "<OpenAI Compatible API Key>",
-#     model="gpt-4-turbo-preview",
-#     openai_comp_api_base_url="https://api.openai.com/v1/chat/completions"
+#     sws.AIModel(
+#         "<OpenAI Compatible API Key>",
+#         model="gpt-4-turbo-preview",
+#         openai_comp_api_base_url="https://api.openai.com/v1/chat/completions"
+#     )
 # )
 
 # --------------------------------------------------------------------

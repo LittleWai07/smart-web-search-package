@@ -13,6 +13,8 @@ from SmartWebSearch.QueryStorm import QueryStorm
 from SmartWebSearch.KeyCheck import KeyCheck
 from SmartWebSearch.Progress import Progress, _ProgressData
 from SmartWebSearch.Progress import ProgressStatusSelector as pss
+from SmartWebSearch.AIModel import AIModel
+from SmartWebSearch.Debugger import show_debug
 from typing import Callable, Any
 
 # SmartWebSearch class
@@ -21,16 +23,13 @@ class SmartWebSearch:
     A class for searching web using Tavily API with built-in RAG (Retrieval-Augmented Generation) capabilities.
     """
 
-    def __init__(self, ts_api_key: str, openai_comp_api_key: str, model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> None:
+    def __init__(self, ts_api_key: str, ai_model: AIModel) -> None:
         """
         Initialize the SmartWebSearch object.
 
         Args:
             ts_api_key (str): The Tavily API key.
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            model (str): The model to use.
-            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
-            debug (bool): Whether to enable debug mode.
+            ai_model (AIModel): The AIModel object.
 
         Returns:
             None
@@ -38,11 +37,12 @@ class SmartWebSearch:
 
         # Initialize the Tavily API
         self.ts_api_key: str = ts_api_key
+        self.ai_model: AIModel = ai_model
         
         # Initialize the essential objects
         self.rag: RAGTool = RAGTool()
-        self.smr: Summarizer = Summarizer(openai_comp_api_key, model, openai_comp_api_base_url)
-        self.qs: QueryStorm = QueryStorm(openai_comp_api_key, model, openai_comp_api_base_url)
+        self.smr: Summarizer = Summarizer(ai_model)
+        self.qs: QueryStorm = QueryStorm(ai_model)
 
         # Initialize the Progress object
         self.progress: Progress = Progress()
@@ -75,15 +75,12 @@ class SmartWebSearch:
         # Add progress listener to RAGTool
         self.rag.progress.add_progress_listener(rag_progress_listener)
 
-    def change_api_keys(self, ts_api_key: str, openai_comp_api_key: str, model: str = "deepseek-chat", openai_comp_api_base_url: str = "https://api.deepseek.com/chat/completions") -> None:
+    def change_tavily_api_key(self, ts_api_key: str) -> None:
         """
         Change the API keys of the SmartWebSearch object.
 
         Args:
             ts_api_key (str): The Tavily API key.
-            openai_comp_api_key (str): The OpenAI Compatible API key.
-            model (str): The model to use.
-            openai_comp_api_base_url (str): The OpenAI Compatible API base URL.
 
         Returns:
             None
@@ -91,20 +88,9 @@ class SmartWebSearch:
 
         # Change the API keys
         self.ts_api_key: str = ts_api_key
-        self.smr.openai_comp_api_key = openai_comp_api_key
-        self.qs.openai_comp_api_key = openai_comp_api_key
-
-        # Change the model
-        self.smr.model = model
-        self.qs.model = model
-
-        # Change the OpenAI Compatible API base URL
-        self.smr.openai_comp_api_base_url = openai_comp_api_base_url
-        self.qs.openai_comp_api_base_url = openai_comp_api_base_url
 
         # Check the OpenAI Compatible API key
         KeyCheck.check_tavily_api_key(ts_api_key)
-        KeyCheck.check_openai_comp_api_key(openai_comp_api_key, model, openai_comp_api_base_url)
 
     def search(self, prompt: str, stream_cb: Callable[[str], None] = None) -> str:
         """
@@ -154,6 +140,8 @@ class SmartWebSearch:
         # Update progress
         self.progress._update_progress(pss.STORMING, f"Storming the main queries and auxiliary queries for the prompt '{prompt}'")
 
+        show_debug(f"Storming the main queries and auxiliary queries for the prompt '{prompt}'")
+
         # Generate some search queries
         m_query, *a_queries = self.qs.storm_with_prompt(prompt)
 
@@ -162,6 +150,8 @@ class SmartWebSearch:
             'main_query': m_query,
             'auxiliary_queries': a_queries
         })
+
+        show_debug(f"Stormed the main queries and auxiliary queries for the prompt '{prompt}'")
 
         if a_queries:
             # Perform the search
@@ -177,6 +167,8 @@ class SmartWebSearch:
         # Update progress
         self.progress._update_progress(pss.CONCLUDING, f"Concluding the content for the prompt '{prompt}'")
 
+        show_debug(f"Concluding the content for the prompt '{prompt}'")
+
         # Summarize the content
         conclusion = self.smr.summarize(prompt, content, stream_cb)
 
@@ -187,11 +179,15 @@ class SmartWebSearch:
             'conclusion': conclusion
         })
 
+        show_debug(f"Concluded the content for the prompt '{prompt}'")
+
         self.progress._update_progress(pss.COMPLETED, f"Search completed for the prompt '{prompt}'", {
             'prompt': prompt,
             'summaries': [ result.summary for result in results ],
             'conclusion': conclusion
         })
+
+        show_debug(f"Search completed for the prompt '{prompt}'")
 
         self.progress._update_progress(pss.IDLE)
 
@@ -249,6 +245,8 @@ class SmartWebSearch:
         # Update progress
         self.progress._update_progress(pss.STORMING, f"Decomposing the prompt '{prompt}' into tasks")
 
+        show_debug(f"Decomposing the prompt '{prompt}' into tasks")
+
         # Decompose the prompt into tasks
         tasks: list[str] = self.qs.decompose_tasks_with_prompt(prompt)
 
@@ -256,6 +254,8 @@ class SmartWebSearch:
         self.progress._update_progress(pss.STORMED, f"Decomposed the prompt '{prompt}' into tasks", {
             'tasks': tasks
         })
+
+        show_debug(f"Decomposed the prompt '{prompt}' into tasks")
 
         # Create a task queries container to store the queries for each task
         """
@@ -271,6 +271,8 @@ class SmartWebSearch:
             # Update progress
             self.progress._update_progress(pss.STORMING, f"Storming the main queries and auxiliary queries for the task '{task}'")
 
+            show_debug(f"Storming the main queries and auxiliary queries for the task '{task}'")
+
             # Generate queries
             aux_queries_list: list[str] = []
 
@@ -282,6 +284,8 @@ class SmartWebSearch:
                 'main_query': m_query,
                 'auxiliary_queries': a_queries
             })
+
+            show_debug(f"Stormed the main queries and auxiliary queries for the task '{task}'")
 
             # Search with main query
             results: _SearchResults | list[_SearchResults] = ts.search(m_query, max_results = 15)
@@ -327,6 +331,8 @@ class SmartWebSearch:
             'matches': matches,
         })
 
+        show_debug(f"Concluding the summaries and matches for the prompt '{prompt}'")
+
         # Generate conclusion
         conclusion = self.smr.summarize(prompt, "\n".join(src.get_summaries() + [match[1] for match in matches]), stream_cb)
 
@@ -338,12 +344,16 @@ class SmartWebSearch:
             'conclusion': conclusion
         })
 
+        show_debug(f"Concluded the summaries and matches for the prompt '{prompt}'")
+
         self.progress._update_progress(pss.COMPLETED, f"Search completed for the prompt '{prompt}'", {
             'prompt': prompt,
             'summaries': src.get_summaries(),
             'matches': matches,
             'conclusion': conclusion
         })
+
+        show_debug(f"Search completed for the prompt '{prompt}'")
 
         self.progress._update_progress(pss.IDLE)
 

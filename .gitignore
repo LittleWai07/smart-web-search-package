@@ -1,6 +1,7 @@
 test.py
 /SmartWebSearch/__pycache__
 debug-*
+internal-*
 *.spec
 sws_config.json
 /sws_*.py
