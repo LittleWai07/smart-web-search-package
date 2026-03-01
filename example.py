@@ -52,4 +52,4 @@ print("=== Normal Search (Tavily summaries) ===")
 search.search(prompt, stream_summary_callback)
 
 print("\n=== Deep Search (full page content + RAG) ===")
-search.deepsearch(prompt, stream_summary_callback)
+search.deepsearch(prompt, stream_summary_callback, depth = 'HIGH') # You can set the search depth here with ('MINIMAL', 'LOW', 'MEDIUM', 'HIGH')

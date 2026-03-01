@@ -15,13 +15,16 @@ from SmartWebSearch.Progress import Progress, _ProgressData
 from SmartWebSearch.Progress import ProgressStatusSelector as pss
 from SmartWebSearch.AIModel import AIModel
 from SmartWebSearch.Debugger import show_debug
-from typing import Callable, Any
+from typing import Callable, Any, Literal, TypeAlias
 
 # SmartWebSearch class
 class SmartWebSearch:
     """
     A class for searching web using Tavily API with built-in RAG (Retrieval-Augmented Generation) capabilities.
     """
+
+    # Constants
+    SEARCH_DEPTH: TypeAlias = Literal['MINIMAL', 'LOW', 'MEDIUM', 'HIGH']
 
     def __init__(self, ts_api_key: str, ai_model: AIModel) -> None:
         """
@@ -194,17 +197,29 @@ class SmartWebSearch:
         # Summerize the content
         return conclusion
     
-    def deepsearch(self, prompt: str, stream_cb: Callable[[str], None] = None) -> str:
+    def deepsearch(self, prompt: str, stream_cb: Callable[[str], None] = None, depth: SEARCH_DEPTH = 'MEDIUM') -> str:
         """
         Perform a deep search using the Tavily API.
 
         Args:
             prompt (str): The search prompt.
             stream_cb (Callable[[str], None]) = None: The callback function for stream. If callback function is not None, the response will be streamed to the callback function as parameters.
+            depth (SEARCH_DEPTH) = 'MEDIUM': The depth of the search.
 
         Returns:
             str: The search results.
         """
+
+        # Set the max content length according to the search depth
+        match depth:
+            case 'MINIMAL':
+                max_content_length: int = 80000
+            case 'LOW':
+                max_content_length: int = 120000
+            case 'MEDIUM':
+                max_content_length: int = 150000
+            case 'HIGH':
+                max_content_length: int = 180000
 
         # Define a function for listening to the progress updates of TavilySearch
         def ts_progress_listener(progress_data: _ProgressData) -> None:
@@ -275,40 +290,63 @@ class SmartWebSearch:
 
             # Generate queries
             aux_queries_list: list[str] = []
-
             m_query, *a_queries = self.qs.storm_with_prompt(task)
-            aux_queries_list.append(a_queries)
+
+            # Add the auxiliary queries to the list
+            aux_queries_list.extend(a_queries)
 
             # Update progress
-            self.progress._update_progress(pss.STORMED, f"Stormed the main queries and auxiliary queries for the task '{task}'", {
+            self.progress._update_progress(pss.STORMED, f"Stormed the main queries and {len(a_queries)} auxiliary queries for the task '{task}'", {
                 'main_query': m_query,
                 'auxiliary_queries': a_queries
             })
 
-            show_debug(f"Stormed the main queries and auxiliary queries for the task '{task}'")
+            show_debug(f"Stormed the main queries and {len(a_queries)} auxiliary queries for the task '{task}'")
 
             # Search with main query
-            results: _SearchResults | list[_SearchResults] = ts.search(m_query, max_results = 15)
+            results: _SearchResults | list[_SearchResults] = ts.search(m_query, max_results = 15, max_content_length = max_content_length)
             summary = results.summary
             src.append(results)
 
             if a_queries:
                 # Search with auxiliary queries
-                results: _SearchResults | list[_SearchResults] = ts.search_d(m_query, a_queries, max_results_for_each = 15)
+                results: _SearchResults | list[_SearchResults] = ts.search_d(m_query, a_queries, max_results_for_each = 15, max_content_length = max_content_length)
                 src.append(results)
 
                 # Concatenate the summaries of the search results
                 for res in results:
                     summary += '\n' + res.summary
 
-            # If the length of the search results content less than 600,000, generate more queries with the summary
-            if len(src.to_str(False)) < 600000:
+            # If the search depth is not 'MINIMAL', generate more queries with the summary
+            if depth != 'MINIMAL':
+                # Update progress
+                self.progress._update_progress(pss.STORMING, f"Storming extra auxiliary queries for the task '{task}'")
+
+                show_debug(f"Storming extra auxiliary queries for the task '{task}'")
+
                 # Generate queries
                 a_queries: list[str] = self.qs.storm_with_summary(task, summary)
-                aux_queries_list.append(a_queries)
+
+                # Check the search depth and limit the number of auxiliary queries
+                if depth == 'LOW':
+                    a_queries: list[str] = a_queries[:3]
+                if depth == 'MEDIUM':
+                    a_queries: list[str] = a_queries[:5]
+                if depth == 'HIGH':
+                    a_queries: list[str] = a_queries
+
+                # Add the auxiliary queries to the list
+                aux_queries_list.extend(a_queries)
+
+                # Update progress
+                self.progress._update_progress(pss.STORMED, f"Stormed {len(a_queries)} extra auxiliary queries for the task '{task}'", {
+                    'auxiliary_queries': a_queries
+                })
+
+                show_debug(f"Stormed {len(a_queries)} extra auxiliary queries for the task '{task}'")
 
                 # Search with auxiliary queries
-                results = ts.search_d(m_query, a_queries, max_results_for_each = 10)
+                results = ts.search_d(m_query, a_queries, max_results_for_each = 10, max_content_length = max_content_length)
                 src.append(results)
 
             # Append the task queries

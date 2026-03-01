@@ -446,7 +446,7 @@ class TavilySearch:
         # Set the API key
         self.api_key: str = api_key
 
-    def __search(self, query: str, max_results: int = 10, include_page_content: bool = True) -> _SearchResults:
+    def __search(self, query: str, max_results: int = 10, include_page_content: bool = True, max_content_length: int = 150000) -> _SearchResults:
         """
         Search for a query using Tavily API.
 
@@ -454,6 +454,7 @@ class TavilySearch:
             query (str): The search query.
             max_results (int) = 10: The maximum number of results to return.
             include_page_content (bool) = True: Whether to include page content.
+            max_content_length (int) = 150000: The maximum length of the page content fetched.
 
         Returns:
             _SearchResults: The search results.
@@ -602,7 +603,8 @@ class TavilySearch:
                 query,
                 search_result,
                 parsed_search_results,
-                len(results["results"])
+                len(results["results"]),
+                max_content_length
             ))
             thread.daemon = True
 
@@ -783,7 +785,7 @@ class TavilySearch:
         # Return the page source
         return page_source
 
-    def __parse(self, query: str, search_result: _SearchResult, search_results: list[_SearchResult], total_results: int = 0) -> None:
+    def __parse(self, query: str, search_result: _SearchResult, search_results: list[_SearchResult], total_results: int = 0, max_content_length: int = 150000) -> None:
         """
         Fetch and parse the page source, extract the page content, store it in the page_content attribute of the search result and append it to the list of search results.
 
@@ -842,8 +844,8 @@ class TavilySearch:
         )
 
         # Set the page content to the parsed markdown
-        # Get the first 150,000 characters of the parsed markdown only if parsed markdown has more than 150,000 characters
-        search_result.page_content.content = parsed_markdown[:150000]
+        # Slice the markdown to the maximum content length
+        search_result.page_content.content = parsed_markdown[:max_content_length]
         
         # Append the search result to the search results list
         search_results.append(search_result)
@@ -862,7 +864,7 @@ class TavilySearch:
         # Sleep 0.1 seconds
         time.sleep(0.1)
 
-    def search(self, query: str, include_page_content: bool = True, max_results: int = 10) -> _SearchResults:
+    def search(self, query: str, include_page_content: bool = True, max_results: int = 10, max_content_length: int = 150000) -> _SearchResults:
         """
         Search for a query using Tavily API.
 
@@ -870,6 +872,7 @@ class TavilySearch:
             query (str): The search query.
             include_page_content (bool) = True: Whether to include page content.
             max_results (int) = 10: The maximum number of results to return.
+            max_content_length (int) = 150000: The maximum length of the page content fetched.
 
         Returns:
             _SearchResults: The search results.
@@ -877,7 +880,7 @@ class TavilySearch:
 
         show_debug(f"Searching for query: {query.replace(' ', '+')}")
 
-        results: _SearchResults = self.__search(query.replace(' ', '+'), max_results, include_page_content)
+        results: _SearchResults = self.__search(query.replace(' ', '+'), max_results, include_page_content, max_content_length)
 
         # Update the progress
         self.progress._update_progress(pss.COMPLETED, f"Found {len(results.results)} results for query {query}", {
@@ -890,7 +893,7 @@ class TavilySearch:
         # Return the search results
         return results
 
-    def search_d(self, query: str, aux_queries: list[str] = [], include_page_content: bool = True, include_main_query: bool = False, max_results_for_each: int = 6) -> list[_SearchResults]:
+    def search_d(self, query: str, aux_queries: list[str] = [], include_page_content: bool = True, include_main_query: bool = False, max_results_for_each: int = 6, max_content_length: int = 150000) -> list[_SearchResults]:
         """
         Search for a query using Tavily API with auxiliary queries.
 
@@ -900,6 +903,7 @@ class TavilySearch:
             include_page_content (bool) = True: Whether to include page content.
             include_main_query (bool) = False: Whether to include the main query in the page content of the search results.
             max_results_for_each (int) = 6: The maximum number of results to return for each query (including the main query and the auxiliary queries).
+            max_content_length (int) = 150000: The maximum length of the page content fetched.
 
         Returns:
             list[_SearchResults]: The search results.
@@ -916,7 +920,7 @@ class TavilySearch:
         if include_main_query:
             show_debug(f"Searching for query: {query.replace(' ', '+')}")
 
-            results.append(self.__search(query.replace(' ', '+'), max_results_for_each, include_page_content))
+            results.append(self.__search(query.replace(' ', '+'), max_results_for_each, include_page_content, max_content_length))
 
         # Search for the auxiliary queries with the main query
         for detail in aux_queries:
@@ -924,7 +928,7 @@ class TavilySearch:
 
             show_debug(f"Searching for query: {current_query.replace(' ', '+')}")
 
-            results.append(self.__search(current_query.replace(' ', '+'), max_results_for_each, include_page_content))
+            results.append(self.__search(current_query.replace(' ', '+'), max_results_for_each, include_page_content, max_content_length))
 
         # Update the progress
         self.progress._update_progress(pss.COMPLETED, f"Found {sum([len(search_results.results) for search_results in results])} results for query '{query}' with auxiliary queries {', '.join([f'\'{aux_query}\'' for aux_query in aux_queries])}", {

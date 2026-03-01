@@ -2,11 +2,20 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://img.shields.io/pypi/v/SmartWebSearch)](https://pypi.org/project/SmartWebSearch/)
+
+## Table of Contents
+- [Features](#features)
+- [Environment](#environment)
+- [Installation](#installation)
+- [API Keys](#api-keys)
+- [Quick Start](#quick-start)
+- [License](#license)
 
 SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 ## Package Latest Version
-- 1.3.6
+- 1.4.0
 
 ## Features
 - 🌐 **Web Search** – Uses Tavily API to fetch relevant search results.
@@ -105,10 +114,10 @@ print("=== Normal Search (Tavily summaries) ===")
 search.search(prompt, stream_summary_callback)
 
 print("\n=== Deep Search (full page content + RAG) ===")
-search.deepsearch(prompt, stream_summary_callback)
+search.deepsearch(prompt, stream_summary_callback, depth = 'HIGH') # You can set the search depth here with ('MINIMAL', 'LOW', 'MEDIUM', 'HIGH')
 ```
 
-**Note**: The documentation of this package will be completed in the future.
+**Note**: Detailed API documentation is under development. For now, please refer to the source code and docstrings.
 
 ## License
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/LittleWai07/smart-web-search-package/blob/main/LICENSE) file for details

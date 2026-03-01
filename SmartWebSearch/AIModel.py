@@ -161,6 +161,9 @@ class AIModel:
             if chunk == "[DONE]":
                 break
 
+            if chunk == ": keep-alive":
+                continue
+
             stream_cb(json.loads(chunk))
 
             # Append the chunk to the content

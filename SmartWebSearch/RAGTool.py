@@ -259,20 +259,20 @@ class RAGTool:
         """
 
         # Update the progress
-        self.progress._update_progress(pss.KL_BASE_MATCHING, f"Matching knowledge base.", {
+        self.progress._update_progress(pss.KL_BASE_MATCHING, f"Matching knowledge base with prompt '{prompt}'.", {
             "knowledge_base": knowledge_base,
             "prompt": prompt,
             "top_k": top_k,
             "threshold_score": threshold_score
         })
 
-        show_debug(f"Matching knowledge base...")
+        show_debug(f"Matching knowledge base with prompt '{prompt}'...")
 
         # Match the prompt with the knowledge base
         matched_results: list[tuple[float, str]] = knowledge_base.match_knowledge(self.embedding_model, prompt, top_k, threshold_score)
 
         # Update the progress
-        self.progress._update_progress(pss.KL_BASE_MATCHED, f"Knowledge base matched.", {
+        self.progress._update_progress(pss.KL_BASE_MATCHED, f"Knowledge base matched with prompt '{prompt}'.", {
             "knowledge_base": knowledge_base,
             "prompt": prompt,
             "top_k": top_k,
@@ -281,7 +281,7 @@ class RAGTool:
             "total_matched_results": len(matched_results)
         })
 
-        show_debug(f"Knowledge base matched.")
+        show_debug(f"Knowledge base matched with prompt '{prompt}'.")
 
         self.progress._update_progress(pss.IDLE)
 
