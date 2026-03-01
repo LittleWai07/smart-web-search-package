@@ -36,6 +36,11 @@ search: sws.SmartWebSearch = sws.SmartWebSearch(
 # Define a callback function for streaming the summary results
 # --------------------------------------------------------------------
 def stream_summary_callback(token: str):
+    if token == sws.Summarizer.COMPLETION_ENDED:
+        # Add a new line after the completion ended to separate the summaries and the debugging messages
+        print()
+        return
+
     print(token, end='', flush=True)
 
 # --------------------------------------------------------------------
