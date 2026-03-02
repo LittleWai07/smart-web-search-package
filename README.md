@@ -5,17 +5,23 @@
 [![PyPI version](https://img.shields.io/pypi/v/SmartWebSearch)](https://pypi.org/project/SmartWebSearch/)
 
 ## Table of Contents
+
+- [Introduction](#introduction)
+- [Package Latest Version](#package-latest-version)
 - [Features](#features)
 - [Environment](#environment)
 - [Installation](#installation)
 - [API Keys](#api-keys)
 - [Quick Start](#quick-start)
+- [Search v.s. DeepSearch](#search-vs-deepsearch)
 - [License](#license)
+
+## Introduction
 
 SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 ## Package Latest Version
-- 1.4.0
+- 1.4.1
 
 ## Features
 - 🌐 **Web Search** – Uses Tavily API to fetch relevant search results.
@@ -116,6 +122,44 @@ search.search(prompt, stream_summary_callback)
 print("\n=== Deep Search (full page content + RAG) ===")
 search.deepsearch(prompt, stream_summary_callback, depth = 'HIGH') # You can set the search depth here with ('MINIMAL', 'LOW', 'MEDIUM', 'HIGH')
 ```
+
+## Search v.s. DeepSearch
+
+### Search
+
+1. **Brainstorm Queries**: Brainstorm the search queries according to your prompt with AI model. Including a main search query and not more than 5 auxiliary queries.
+2. **The 1st-Term Search**: The first term of web searching. Use the main search query to search first, then use the main search query with each auxiliary query as matches to search. After that, Grab all the summaries from the search results.
+3. **Final Conclusion**: Do a final conclusion with the summaries with AI model.
+
+### DeepSearch
+
+1. **Decompose Tasks**: Decompose the prompt into search tasks so as to allow multiple main queries in the same search.
+2. **Brainstorm Queries**: Brainstorm the search queries for each task with AI model. Each task includes a main search query and not more than 5 auxiliary queries.
+3. **The 1st-Term Search**: The first term of web searching. Use the main search query to search first, then use the main search query with each auxiliary query as matches to search. After that, Fetch all the page contents and grab all the summaries from the search results. This process is repeated for each task.
+4. **Brainstorm Extra Auxiliary Queries**: Brainstorm the extra queries for each task with AI model. Each task includes not more than 12 extra auxiliary queries (According to the search depth). (This step will be skipped if the search depth is set to 'MINIMAL')
+5. **The 2nd-Term Search**: Use the main search query with each extra auxiliary query as matches to search. After that, Fetch all the page contents and grab all the summaries from the search results. This process is repeated for each task. (This step will be skipped if the search depth is set to 'MINIMAL')
+6. **RAG Pipeline**: Embed the page contents with multilingual models (e.g., multilingual-e5-base) and retrieve context-aware chunks.
+7. **Final Conclusion**: Do a final conclusion with all summaries and RAG matches with AI model.
+
+### Differences Between Each Search Depth (Only For DeepSearch):
+
+- **MINIMAL**: Skip the extra auxiliary queries brainstorm and 2nd-Term Search, and maximum content length for each page is limited to 80,000 characters.
+- **LOW**: Maximum extra auxiliary queries to brainstorm is 3, and maximum content length for each page is limited to 120,000 characters.
+- **MEDIUM**: Maximum extra auxiliary queries to brainstorm is 5, and maximum content length for each page is limited to 150,000 characters.
+- **HIGH**: Maximum extra auxiliary queries to brainstorm is 12, and maximum content length for each page is limited to 180,000 characters.
+
+### Table comparison
+
+| Comparison | Search | DeepSearch (MINIMAL) | DeepSearch (LOW) | DeepSearch (MEDIUM) | DeepSearch (HIGH) |
+| -------- | ------- | ------- | ------- | ------- | ------- |
+| Decompose Tasks | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Brainstorm Queries | ✅ (Maximum **5 queries**) | ✅ (Maximum **5 queries**) | ✅ (Maximum **5 queries**) | ✅ (Maximum **5 queries**) | ✅ (Maximum **5 queries**) |
+| The 1st-Term Search | ✅ (Grab **summaries** only) | ✅ (Grab **summaries** and fetch **page contents** with **80k chars** maximum content for each page) | ✅ (Grab **summaries** and fetch **page contents** with **120k chars** maximum content for each page) | ✅ (Grab **summaries** and fetch **page contents** with **150k chars** maximum content for each page) | ✅ (Grab **summaries** and fetch **page contents** with **180k chars** maximum content for each page) |
+| Brainstorm Extra Auxiliary Queries | ❌ | ❌ | ✅ (Maximum **3 extra auxiliary queries**) | ✅ (Maximum **5 extra auxiliary queries**) | ✅ (Maximum **12 extra auxiliary queries**) |
+| The 2nd-Term Search | ❌ | ❌ | ✅ | ✅ | ✅ |
+| RAG Pipeline | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Final Conclusion | ✅ (Conclude **summaries**) | ✅ (Conclude **summaries** and **RAG matches**) | ✅ (Conclude **summaries** and **RAG matches**) | ✅ (Conclude **summaries** and **RAG matches**) | ✅ (Conclude **summaries** and **RAG matches**) |
+
 
 **Note**: Detailed API documentation is under development. For now, please refer to the source code and docstrings.
 
