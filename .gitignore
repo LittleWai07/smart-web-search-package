@@ -1,4 +1,5 @@
 test.py
+test*.py
 /SmartWebSearch/__pycache__
 debug-*
 internal-*
@@ -8,3 +9,5 @@ sws_config.json
 /build
 /dist
 /SmartWebSearch.egg-info
+*.klb
+*.qrs

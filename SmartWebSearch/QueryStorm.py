@@ -8,6 +8,7 @@ This module implements the query brainstorm for the web searching module.
 # Import the required modules
 from typing import Any
 import requests
+import datetime
 from SmartWebSearch.AIModel import AIModel
 
 # QueryStorm Class
@@ -51,7 +52,7 @@ class QueryStorm:
         - 如果有多个任务，请用“&&”将每个任务提示词连接起来。
         - 如果只有一个任务，直接输出该任务提示词，不加“&&”。
         - 输出时不要包含任何其他解释或文字，只输出格式化后的任务提示词字符串。
-        - 根据用户提示词所用的语言不同，输出结果也要按照提示词所用的语言输出。
+        - 输出的语言必须与用户的提示词“{prompt}”的语言保持一致（例如，用户的提示词为中文，则总结使用中文；用户的提示词为英文，则总结使用英文）。
 
         示例
         示例1：
@@ -69,6 +70,11 @@ class QueryStorm:
         示例4：
         用户输入：Search about latest technology news and latest events in the world
         你的输出：Search about latest technology news&&Search about latest events in the world
+
+        示例5：
+        用户输入：What is RAG? What advantages does RAG have? What can RAG do?
+        你的输出：Search about RAG, its advantages and what can it do
+        *解释：虽然用户提问了三个问题，但是都是围绕着同一主题RAG，所以应该将这个三个问题合并成一个任务提示词。
 
         注意事项
         - 仔细阅读用户输入，识别出所有不同的搜索主体。
@@ -109,12 +115,14 @@ class QueryStorm:
         任务描述：
         根据用户提供的提示詞“{prompt}”和提示詞相關关键词的搜索结果总结“{summary}”，首先判断用户想搜索的内容的核心类型（例如，概念定义、工具使用、历史背景、技术原理等），然后基于这个类型，延展出更多相关的搜索辅助关键词。这些关键词应帮助用户进一步精确搜索，获取更具体、更深入的信息。
 
+        今天的日期时间是“{datetime}”，如果你需要用到这个日期时间用来搜索最近的内容，请在搜索辅助关键词中包含它。
+        
         输出格式要求：
         - 输出3至12个搜索辅助关键词即可，不必太多，也不能太少。
         - 仅输出搜索辅助关键词，不包含任何其他文字或解释。
         - 每个搜索辅助关键词之间用一个空格“ ”隔开。
         - 如果搜索辅助关键词内包含多个单词，请用加号“+”连接，不要使用空格或其他分隔符。
-        - 关键词的语言应与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
+        - 关键词的语言必须与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
 
         示例：
         输入：
@@ -130,7 +138,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = prompt, summary = summary)
+                    "content": prompt.format(prompt = prompt, summary = summary, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
                 }
             ]
         )
@@ -153,6 +161,9 @@ class QueryStorm:
 
         任务描述：
         根据用户提供的提示词 {prompt}，判断用户想要搜索的核心内容，并列出网络搜索关键词。
+
+        今天的日期时间是“{datetime}”，如果你需要用到这个日期时间用来搜索最近的内容，请在搜索辅助关键词中包含它。
+
         关键词生成规则：
         - 主要关键词：准确反映搜索主题的核心概念，必须保留。
         - 辅助关键词：围绕主要关键词，涵盖用户明确提及需要搜索的具体内容（例如定义、类型、用途、原理、历史、相关公式或操作方法等）。
@@ -161,7 +172,7 @@ class QueryStorm:
         - 如果提示词中提到了时间点，如年份、月份和日期，应该把这些时间点以及相关的关键词包含在主要关键词中，而不是把时间点单独作为主要关键词。
         - 如果用户在提示词中明确指明需要搜索与核心主题相关的具体内容，则输出「主要关键词 + 辅助关键词」，且辅助关键词数量不超过5个。
         - 不要生成用戶沒有指明需要搜索与核心主题相关的具体内容的搜索辅助关键词。
-        - 关键词语言：关键词的语言应与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
+        - 关键词语言：关键词的语言必须与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
         
         输出格式要求：
         - 仅输出关键词本身，不包含任何解释或附加文字。
@@ -186,7 +197,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = u_prompt)
+                    "content": prompt.format(prompt = u_prompt, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
                 }
             ]
         )

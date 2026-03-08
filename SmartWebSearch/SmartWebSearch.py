@@ -7,7 +7,7 @@ This module implements the SmartWebSearch.
 
 # Import the required modules
 from SmartWebSearch.TavilySearch import TavilySearch, SearchResultsContainer, _SearchResults
-from SmartWebSearch.RAGTool import RAGTool
+from SmartWebSearch.RAGTool import RAGTool, _KnowledgeBaseSet
 from SmartWebSearch.Summarizer import Summarizer
 from SmartWebSearch.QueryStorm import QueryStorm
 from SmartWebSearch.KeyCheck import KeyCheck
@@ -16,6 +16,8 @@ from SmartWebSearch.Progress import ProgressStatusSelector as pss
 from SmartWebSearch.AIModel import AIModel
 from SmartWebSearch.Debugger import show_debug
 from typing import Callable, Any, Literal, TypeAlias
+import os
+from pathlib import Path
 
 # SmartWebSearch class
 class SmartWebSearch:
@@ -95,13 +97,14 @@ class SmartWebSearch:
         # Check the OpenAI Compatible API key
         KeyCheck.check_tavily_api_key(ts_api_key)
 
-    def search(self, prompt: str, stream_cb: Callable[[str], None] = None) -> str:
+    def search(self, prompt: str, stream_cb: Callable[[str], None] = None, kb_output_path: str = None) -> str:
         """
         Perform a normal search using the Tavily API.
 
         Args:
             prompt (str): The search prompt.
             stream_cb (Callable[[str], None]) = None: The callback function for stream. If callback function is not None, the response will be streamed to the callback function as parameters.
+            kb_output_path (str) = None: The path to the knowledge base output file.
 
         Returns:
             str: The search results.
@@ -184,6 +187,39 @@ class SmartWebSearch:
 
         show_debug(f"Concluded the content for the prompt '{prompt}'")
 
+        # If knowledge base output path is not None, save the summaries content as a knowledge base
+        if kb_output_path:
+            # Update progress
+            self.progress._update_progress(pss.KL_BASE_SAVING, f"Saving the knowledge base for the prompt '{prompt}'")
+
+            show_debug(f"Saving the knowledge base for the prompt '{prompt}'")
+
+            # Build the knowledge base
+            summaries_kb: _KnowledgeBaseSet = self.rag.build_knowledge(content)
+
+            # Create a folder for the knowledge base
+            Path(os.path.dirname(kb_output_path), os.path.basename(kb_output_path)).mkdir(parents = True, exist_ok = True)
+
+            # Save the knowledge base
+            summaries_kb.save_knowledge(
+                dir = Path(os.path.dirname(kb_output_path), os.path.basename(kb_output_path)),
+                filename = os.path.basename(kb_output_path)
+            )
+
+            # Save the queries
+            with open(Path(os.path.dirname(kb_output_path), os.path.basename(kb_output_path), f'{os.path.basename(kb_output_path)}.qrs'), 'w', encoding = 'utf-8') as f:
+                # Write the main query
+                f.write(f"{m_query}\n")
+
+                # Write the auxiliary queries
+                for a_query in a_queries:
+                    f.write(f"{m_query} {a_query}\n")
+
+            # Update progress
+            self.progress._update_progress(pss.KL_BASE_SAVED, f"Saved the knowledge base for the prompt '{prompt}' to '{Path(kb_output_path).absolute()}'")
+
+            show_debug(f"Saved the knowledge base for the prompt '{prompt}' to '{Path(kb_output_path).absolute()}'")
+
         self.progress._update_progress(pss.COMPLETED, f"Search completed for the prompt '{prompt}'", {
             'prompt': prompt,
             'summaries': [ result.summary for result in results ],
@@ -197,7 +233,7 @@ class SmartWebSearch:
         # Summerize the content
         return conclusion
     
-    def deepsearch(self, prompt: str, stream_cb: Callable[[str], None] = None, depth: SEARCH_DEPTH = 'MEDIUM') -> str:
+    def deepsearch(self, prompt: str, stream_cb: Callable[[str], None] = None, depth: SEARCH_DEPTH = 'MEDIUM', kb_output_path: str = None) -> str:
         """
         Perform a deep search using the Tavily API.
 
@@ -205,6 +241,7 @@ class SmartWebSearch:
             prompt (str): The search prompt.
             stream_cb (Callable[[str], None]) = None: The callback function for stream. If callback function is not None, the response will be streamed to the callback function as parameters.
             depth (SEARCH_DEPTH) = 'MEDIUM': The depth of the search.
+            kb_output_path (str) = None: The path to the knowledge base output file.
 
         Returns:
             str: The search results.
@@ -353,14 +390,14 @@ class SmartWebSearch:
             task_queries.append([m_query, aux_queries_list])
 
         # Create knowledge base
-        kb = src.to_rag(self.rag, False)
+        kb: _KnowledgeBaseSet = src.to_rag(self.rag, False)
 
         # Match the queries with the knowledge base
         matches = []
         for task in task_queries:
             m_query: str = task[0]
             for a_query in task[1]:
-                matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 10, threshold_score = 0.81))
+                matches.extend(self.rag.match_knowledge(kb, f"{m_query} {a_query}", top_k = 8, threshold_score = 0.8))
 
         # Update progress
         self.progress._update_progress(pss.CONCLUDING, f"Concluding the summaries and matches for the prompt '{prompt}'", {
@@ -384,6 +421,41 @@ class SmartWebSearch:
 
         show_debug(f"Concluded the summaries and matches for the prompt '{prompt}'")
 
+        # If knowledge base output path is not None, save the summaries with the search results content as a knowledge base
+        if kb_output_path:
+            # Update progress
+            self.progress._update_progress(pss.KL_BASE_SAVING, f"Saving the knowledge base for the prompt '{prompt}'")
+
+            show_debug(f"Saving the knowledge base for the prompt '{prompt}'")
+
+            # Create a folder for the knowledge base
+            Path(os.path.dirname(kb_output_path), os.path.basename(kb_output_path)).mkdir(parents = True, exist_ok = True)
+
+            # Save the knowledge base
+            summaries_kb: _KnowledgeBaseSet = self.rag.build_knowledge(
+                '\n'.join(src.get_summaries())
+            )
+            (summaries_kb + kb).save_knowledge(
+                dir = Path(os.path.dirname(kb_output_path), os.path.basename(kb_output_path)),
+                filename = os.path.basename(kb_output_path)
+            )
+
+            # Save the queries
+            with open(Path(os.path.dirname(kb_output_path), os.path.basename(kb_output_path), f'{os.path.basename(kb_output_path)}.qrs'), 'w', encoding = 'utf-8') as f:
+                # Loop through the task queries
+                for task in task_queries:
+                    # Write the main query
+                    f.write(f"{task[0]}\n")
+
+                    # Write the auxiliary queries
+                    for a_query in task[1]:
+                        f.write(f"{task[0]} {a_query}\n")
+
+            # Update progress
+            self.progress._update_progress(pss.KL_BASE_SAVED, f"Saved the knowledge base for the prompt '{prompt}' to '{Path(kb_output_path).absolute()}'")
+
+            show_debug(f"Saved the knowledge base for the prompt '{prompt}' to '{Path(kb_output_path).absolute()}'")
+
         self.progress._update_progress(pss.COMPLETED, f"Search completed for the prompt '{prompt}'", {
             'prompt': prompt,
             'summaries': src.get_summaries(),
@@ -397,3 +469,69 @@ class SmartWebSearch:
 
         # Return the conclusion
         return conclusion
+    
+    def search_knowledge(self, prompt: str, knowledge_base: _KnowledgeBaseSet, stream_cb: Callable[[str], None] = None) -> str:
+        """
+        Perform a search with knowledge base set
+        
+        Args:
+            prompt (str): The search prompt.
+            knowledge_base (_KnowledgeBaseSet): The knowledge base set.
+            stream_cb (Callable[[str], None]) = None: The callback function for stream. If callback function is not None, the response will be streamed to the callback function as parameters.
+        
+        Returns:
+            str: The search results.
+        """
+
+        # Update progress
+        self.progress._update_progress(pss.STORMING, f"Decomposing the prompt '{prompt}' into tasks")
+
+        show_debug(f"Decomposing the prompt '{prompt}' into tasks")
+
+        # Storm the prompt into tasks
+
+        # Update progress
+        self.progress._update_progress(pss.STORMING, f"Storming the main queries and auxiliary queries for the prompt '{prompt}'")
+
+        show_debug(f"Storming the main queries and auxiliary queries for the prompt '{prompt}'")
+
+        # Generate queries
+        m_query, *a_queries = self.qs.storm_with_prompt(prompt)
+
+        # Update progress
+        self.progress._update_progress(pss.STORMED, f"Stormed the main queries and {len(a_queries)} auxiliary queries for the prompt '{prompt}'", {
+            'main_query': m_query,
+            'auxiliary_queries': a_queries
+        })
+
+        show_debug(f"Stormed the main queries and {len(a_queries)} auxiliary queries for the prompt '{prompt}'")
+
+        # Match the queries with the knowledge base
+        matches = []
+
+        # Match the main query
+        matches.extend(self.rag.match_knowledge(knowledge_base, m_query, top_k = 8, threshold_score = 0.81))
+
+        # Match the main query with each auxiliary query
+        for a_query in a_queries:
+            matches.extend(self.rag.match_knowledge(knowledge_base, f"{m_query} {a_query}", top_k = 8, threshold_score = 0.81))
+
+        # Update progress
+        self.progress._update_progress(pss.CONCLUDING, f"Concluding the summaries and matches for the prompt '{prompt}'", {
+            'prompt': prompt,
+            'matches': matches,
+        })
+
+        show_debug(f"Concluding the summaries and matches for the prompt '{prompt}'")
+
+        # Generate conclusion
+        conclusion = self.smr.summarize(prompt, "\n".join([match[1] for match in matches]) if matches else "No related data found", stream_cb)
+
+        # Update progress
+        self.progress._update_progress(pss.CONCLUDED, f"Concluded the summaries and matches for the prompt '{prompt}'", {
+            'prompt': prompt,
+            'matches': matches,
+            'conclusion': conclusion
+        })
+
+        show_debug(f"Concluded the summaries and matches for the prompt '{prompt}'")

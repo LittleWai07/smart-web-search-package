@@ -43,10 +43,10 @@ class _PageContent:
 
     def __str__(self) -> str:
         """
-        Return the content of the page.
+        Return the string representation of the _PageContent object.
 
         Returns:
-            str: The content of the page.
+            str: The string representation of the _PageContent object.
         """
 
         return f"_PageContent(url='{self.url}', content='{self.content[:50].replace('\n', '\\n')}...')"
@@ -59,7 +59,7 @@ class _PageContent:
             str: The string representation of the _PageContent object.
         """
 
-        return f"_PageContent(url='{self.url}', content='{self.content[:50].replace('\n', '\\n')}...')"
+        return self.__str__()
 
 class _SearchResult:
     """
@@ -90,10 +90,10 @@ class _SearchResult:
 
     def __str__(self) -> str:
         """
-        Return the title of the search result.
+        Return the string representation of the _SearchResult object.
 
         Returns:
-            str: The title of the search result.
+            str: The string representation of the _SearchResult object.
         """
 
         return f"_SearchResult(id={self.id}, title='{self.title}', url='{self.url}', snippet='{self.snippet[:50].replace('\n', '\\n')}...', score={self.score}, page_content={f"_PageContent(content='{self.page_content.content[:50].replace('\n', '\\n')}...', ...)" if self.page_content else None})"
@@ -110,10 +110,10 @@ class _SearchResult:
 
     def to_str(self) -> str:
         """
-        Return the title, and snippet of the page content.
+        Return the title, snippet and page content of the search result.
 
         Returns:
-            str: The title, and snippet of the page content.
+            str: The title, snippet and page content of the search result.
         """
 
         return f"{self.title}\n{self.snippet}" + (f"\n{self.page_content.content}" if self.page_content else "")
@@ -141,10 +141,10 @@ class _SearchResults:
 
     def __str__(self) -> str:
         """
-        Return the summary of the search results.
+        Return the string representation of the _SearchResults object.
 
         Returns:
-            str: The summary of the search results.
+            str: The string representation of the _SearchResults object.
         """
 
         return f"_SearchResults(query='{self.query}', summary='{self.summary[:50]}...', results=[{', '.join([f'_SearchResult(title={result.title}, ...)' for result in self.results])}])"
@@ -161,10 +161,10 @@ class _SearchResults:
     
     def __len__(self) -> int:
         """
-        Return the length of the search results.
+        Return the number of the search results.
 
         Returns:
-            int: The length of the search results.
+            int: The number of the search results.
         """
 
         return len(self.results)
@@ -258,8 +258,54 @@ class SearchResultsContainer:
         """
 
         return [result.summary for result in self.results if isinstance(result, _SearchResults)]
-        
-    def __list(self):
+    
+    def to_str(self, include_summary: bool = True) -> str:
+        """
+        Return the summary and each result of the search results.
+
+        Args:
+            include_summary (bool) = True: Whether to include the summary. Defaults to True.
+
+        Returns:
+            str: The summary and each result of the search results.
+        """
+
+        return "\n".join([result.to_str(include_summary = include_summary) if isinstance(result, _SearchResults) else result.to_str() for result in self.results])
+    
+    def to_rag(self, rag_tool: "RAGTool", include_summary: bool = True) -> "_KnowledgeBaseSet":
+        """
+        Return the RAGTool object.
+
+        Args:
+            rag_tool (RAGTool): The RAGTool object.
+            include_summary (bool) = True: Whether to include the summary. Defaults to True.
+
+        Returns:
+            _KnowledgeBaseSet: The knowledge base set.
+        """
+
+        # Build the knowledge base
+        kl_base_set: _KnowledgeBaseSet = rag_tool.build_knowledge(self.to_str(include_summary = include_summary))
+
+        # Return the RAGTool object and the knowledge base set
+        return kl_base_set
+    
+    def to_txt(self, file_path: str = "search_results.txt") -> None:
+        """
+        Save the search results to a text file.
+
+        Args:
+            file_path (str) = "search_results.txt": The file path to save the search results.
+
+        Returns:
+            None
+        """
+
+        # Save the search results to a text file
+        with open(file_path, "w", encoding = "utf-8") as f:
+            f.write(self.to_str())
+
+    def __list(self) -> list[_SearchResult]:
         """
         Return the list of search results.
 
@@ -322,7 +368,7 @@ class SearchResultsContainer:
 
         return length
     
-    def __getitem__(self, index):
+    def __getitem__(self, index: int):
         """
         Return the search result at the given index.
 
@@ -334,52 +380,6 @@ class SearchResultsContainer:
         """
 
         return self.__list()[index]
-        
-    def to_str(self, include_summary: bool = True) -> str:
-        """
-        Return the summary and each result of the search results.
-
-        Args:
-            include_summary (bool) = True: Whether to include the summary. Defaults to True.
-
-        Returns:
-            str: The summary and each result of the search results.
-        """
-
-        return "\n".join([result.to_str(include_summary = include_summary) if isinstance(result, _SearchResults) else result.to_str() for result in self.results])
-    
-    def to_rag(self, rag_tool: "RAGTool", include_summary: bool = True) -> "_KnowledgeBaseSet":
-        """
-        Return the RAGTool object.
-
-        Args:
-            rag_tool (RAGTool): The RAGTool object.
-            include_summary (bool) = True: Whether to include the summary. Defaults to True.
-
-        Returns:
-            _KnowledgeBaseSet: The knowledge base set.
-        """
-
-        # Build the knowledge base
-        kl_base_set: _KnowledgeBaseSet = rag_tool.build_knowledge(self.to_str(include_summary = include_summary))
-
-        # Return the RAGTool object and the knowledge base set
-        return kl_base_set
-    
-    def to_txt(self, file_path: str = "search_results.txt") -> None:
-        """
-        Save the search results to a text file.
-
-        Args:
-            file_path (str) = "search_results.txt": The file path to save the search results.
-
-        Returns:
-            None
-        """
-
-        # Save the search results to a text file
-        with open(file_path, "w", encoding = "utf-8") as f:
-            f.write(self.to_str())
 
 class InvalidParameterError(Exception):
     """
@@ -388,24 +388,6 @@ class InvalidParameterError(Exception):
     def __init__(self, message: str) -> None:
         """
         Initialize the InvalidParameterError object.
-
-        Args:
-            message (str): The error message.
-
-        Returns:
-            None
-        """
-
-        self.message: str = message
-        super().__init__(self.message)
-
-class InactiveError(Exception):
-    """
-    An exception raised when the TavilySearch object is inactive.
-    """
-    def __init__(self, message: str) -> None:
-        """
-        Initialize the InactiveError object.
 
         Args:
             message (str): The error message.

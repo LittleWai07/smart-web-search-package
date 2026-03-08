@@ -32,9 +32,15 @@ class ProgressStatusSelector:
     KL_BASE_MATCHED: _ProgressStatus = 'KL_BASE_MATCHED'
     CONCLUDING: _ProgressStatus = 'CONCLUDING'
     CONCLUDED: _ProgressStatus = 'CONCLUDED'
+    KL_BASE_SAVING: _ProgressStatus = 'KL_BASE_SAVING'
+    KL_BASE_SAVED: _ProgressStatus = 'KL_BASE_SAVED'
     PART_COMPLETED: _ProgressStatus = 'PART_COMPLETED'
     COMPLETED: _ProgressStatus = 'COMPLETED'
     REQUEST_TIMEOUT: _ProgressStatus = 'REQUEST_TIMEOUT'
+    MODEL_CALLING: _ProgressStatus = 'MODEL_CALLING'
+    MODEL_CALLED: _ProgressStatus = 'MODEL_CALLED'
+    STREAM_STARTED: _ProgressStatus = 'STREAM_STARTED'
+    STREAM_ENDED: _ProgressStatus = 'STREAM_ENDED'
 
 class _ProgressData:
     """

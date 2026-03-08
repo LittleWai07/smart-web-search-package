@@ -6,7 +6,7 @@ This module implements the SmartWebSearch package.
 """
 
 # Import the required modules
-from SmartWebSearch.TavilySearch import TavilySearch, SearchResultsContainer, _SearchResult, _SearchResults, _PageContent, InactiveError, InvalidParameterError
+from SmartWebSearch.TavilySearch import TavilySearch, SearchResultsContainer, _SearchResult, _SearchResults, _PageContent, InvalidParameterError
 from SmartWebSearch.RAGTool import RAGTool, _KnowledgeBaseSet, _KnowledgeBase
 from SmartWebSearch.Summarizer import Summarizer
 from SmartWebSearch.QueryStorm import QueryStorm
@@ -23,7 +23,7 @@ DebuggerConfiguration.CREATE_DEBUG_FILES = False
 DebuggerConfiguration.SKIP_LOW_IMPORTANCE = True
 
 # Print the version of the package
-__version__ = "1.4.1"
+__version__ = "1.5.0"
 
 # Print the name of the package
 __name__ = "SmartWebSearch"

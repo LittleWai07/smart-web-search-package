@@ -9,6 +9,8 @@ This module implements the AIModel for managing the AI model used for the web se
 import os, requests, json
 from typing import Any, TypeAlias, Literal, Callable
 from SmartWebSearch.KeyCheck import InvalidKeyError
+from SmartWebSearch.Debugger import show_debug
+from SmartWebSearch.Progress import Progress, ProgressStatusSelector as pss
 
 # AIModel Class
 class AIModel:
@@ -26,10 +28,14 @@ class AIModel:
             **kwargs (dict[str, Any]): Additional keyword arguments in the request body.
         """
 
+        # Initialize the AIModel object
         self.model: str = model
         self.openai_comp_api_key: str = openai_comp_api_key
         self.openai_comp_api_base_url: str = openai_comp_api_base_url
         self.kwargs: dict[str, Any] = kwargs
+
+        # Initialize the progress object
+        self.progress: Progress = Progress()
 
         # Check the OpenAI Compatible API key and model
         self.check()
@@ -95,6 +101,11 @@ class AIModel:
             dict[str, Any]: The response from the OpenAI Compatible API.
         """
 
+        # Update progress
+        self.progress._update_progress(pss.MODEL_CALLING, f"Calling AI model API '{self.model}' in non-stream mode")
+
+        show_debug(f"Calling AI model API '{self.model}' in non-stream mode ...")
+
         # Send a request to the OpenAI Compatible API
         res: requests.Response = requests.post(
             self.openai_comp_api_base_url,
@@ -112,6 +123,18 @@ class AIModel:
         # Raise an exception if the request fails
         res.raise_for_status()
 
+        # Update progress
+        self.progress._update_progress(pss.MODEL_CALLED, f"Called AI model API '{self.model}' in non-stream mode, total tokens used: {res.json()['usage']['total_tokens']}", {
+            "usage": {
+                "prompt_tokens": res.json()["usage"]["prompt_tokens"],
+                "completion_tokens": res.json()["usage"]["completion_tokens"],
+                "total_tokens": res.json()["usage"]["total_tokens"]
+            },
+            "response": res.json()
+        })
+
+        show_debug(f"Called AI model API '{self.model}' in non-stream mode, total tokens used: {res.json()['usage']['total_tokens']}")
+
         return res.json()
     
     def send_request_stream(self, messages: list[dict[str, Any]], stream_cb: Callable[[dict[str, Any]], None]) -> dict[str, Any]:
@@ -125,6 +148,11 @@ class AIModel:
         Returns:
             dict[str, Any]: The response from the OpenAI Compatible API.
         """
+
+        # Update progress
+        self.progress._update_progress(pss.MODEL_CALLING, f"Calling AI model API '{self.model}' in stream mode")
+
+        show_debug(f"Calling AI model API '{self.model}' in stream mode ...")
 
         # Send a request to the OpenAI Compatible API in stream mode
         res: requests.Response = requests.post(
@@ -145,6 +173,9 @@ class AIModel:
         # Raise an exception if the request fails
         res.raise_for_status()
 
+        # Update progress
+        self.progress._update_progress(pss.STREAM_STARTED, f"Stream output of AI model API '{self.model}' is started")
+
         # Loop through the response iterator
         content: str = ''
         created: int = 0
@@ -161,13 +192,15 @@ class AIModel:
             if chunk == "[DONE]":
                 break
 
-            if chunk == ": keep-alive":
+            if chunk.startswith(': '):
                 continue
 
             stream_cb(json.loads(chunk))
 
-            # Append the chunk to the content
-            content += json.loads(chunk)["choices"][0]["delta"]["content"] if json.loads(chunk)["choices"][0]["delta"].get("content") else ''
+            # Update the content if there is a choice in the chunk
+            if json.loads(chunk)["choices"]:
+                # Append the chunk to the content
+                content += json.loads(chunk)["choices"][0]["delta"]["content"] if json.loads(chunk)["choices"][0]["delta"].get("content") else ''
 
             # Update the usage
             if "usage" in json.loads(chunk):
@@ -181,8 +214,11 @@ class AIModel:
             if "system_fingerprint" in json.loads(chunk):
                 system_fingerprint: str = json.loads(chunk)["system_fingerprint"]
 
-        # Return the response
-        return {
+        # Update progress
+        self.progress._update_progress(pss.STREAM_ENDED, f"Stream output of AI model API '{self.model}' is ended")
+
+        # Save response
+        response: dict[str, Any] = {
             'created': created,
             'object': 'chat.completion',
             'model': self.model,
@@ -200,3 +236,18 @@ class AIModel:
             ],
             'usage': usage
         }
+
+        # Update progress
+        self.progress._update_progress(pss.MODEL_CALLED, f"Called AI model API '{self.model}' in stream mode, total tokens used: {response['usage']['total_tokens']}", {
+            "usage": {
+                "prompt_tokens": response["usage"]["prompt_tokens"],
+                "completion_tokens": response["usage"]["completion_tokens"],
+                "total_tokens": response["usage"]["total_tokens"]
+            },
+            "response": response
+        })
+
+        show_debug(f"Called AI model API '{self.model}' in stream mode, total tokens used: {response['usage']['total_tokens']}")
+
+        # Return the response
+        return response

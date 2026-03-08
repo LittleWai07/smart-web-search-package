@@ -14,6 +14,8 @@ from SmartWebSearch.Debugger import show_debug
 from SmartWebSearch.Progress import Progress, _ProgressData
 from SmartWebSearch.Progress import ProgressStatusSelector as pss
 import datetime
+import pickle
+from pathlib import Path
 
 class _KnowledgeBase:
     """
@@ -34,7 +36,7 @@ class _KnowledgeBase:
         self.knowledge_base: list[str] = knowledge_base
         self.knowledge_vector: np.ndarray = knowledge_vector
 
-    def match_knowledge(self, embedding_model: SentenceTransformer, prompt: str, top_k: int = 10, threshold_score: float = 1):
+    def match_knowledge(self, embedding_model: SentenceTransformer, prompt: str, top_k: int = 10, threshold_score: float = 0.75):
         """
         Match the prompt with the knowledge base.
 
@@ -42,7 +44,7 @@ class _KnowledgeBase:
             embedding_model (SentenceTransformer): The embedding model.
             prompt (str): The prompt to be matched.
             top_k (int) = 10: The number of top matches to return.
-            threshold_score (float) = 1: The threshold score for a match.
+            threshold_score (float) = 0.75: The threshold score for a match.
 
         Returns:
             list[tuple[float, str]]: The top matches with their scores and the corresponding chunks.
@@ -80,7 +82,19 @@ class _KnowledgeBaseSet:
         """
         self.knowledge_base_set: list[_KnowledgeBase] = knowledge_base_set
 
-    def match_knowledge(self, embedding_model: SentenceTransformer, prompt: str, top_k: int = 10, threshold_score: float = 0.82):
+    def merge_knowledge(self, knowledge_base_set: "_KnowledgeBaseSet"):
+        """
+        Merge the knowledge base into the knowledge base set.
+
+        Args:
+            knowledge_base_set (_KnowledgeBaseSet): The knowledge base set to be merged.
+
+        Returns:
+            None
+        """
+        self.knowledge_base_set.extend(knowledge_base_set.knowledge_base_set)
+
+    def match_knowledge(self, embedding_model: SentenceTransformer, prompt: str, top_k: int = 10, threshold_score: float = 0.75):
         """
         Match the prompt with the knowledge base set.
 
@@ -88,7 +102,7 @@ class _KnowledgeBaseSet:
             embedding_model (SentenceTransformer): The embedding model.
             prompt (str): The prompt to be matched.
             top_k (int) = 10: The number of top matches to return.
-            threshold_score (float) = 0.82: The threshold score for a match.
+            threshold_score (float) = 0.75: The threshold score for a match.
 
         Returns:
             list[tuple[float, str]]: The top matches with their scores and the corresponding chunks.
@@ -104,12 +118,58 @@ class _KnowledgeBaseSet:
 
         # Return the top matches
         return [match for match in matches[:top_k + 5]]
+    
+    def save_knowledge(self, dir: str = "", filename: str = "knowledge_base") -> None:
+        """
+        Save the knowledge base set to a file.
+
+        Args:
+            dir (str) = "": The directory to save the knowledge base set.
+            filename (str) = "knowledge_base": The filename to save the knowledge base set.
+
+        Returns:
+            None
+        """
+
+        # Save the knowledge base set to a file
+        with open(Path(dir, f"{filename}.klb"), "wb") as file:
+            pickle.dump(self, file)
+
+    def __add__(self, knowledge_base_set: "_KnowledgeBaseSet") -> "_KnowledgeBaseSet":
+        """
+        Merge the knowledge base set into a new knowledge base set.
+
+        Args:
+            knowledge_base_set (_KnowledgeBaseSet): The knowledge base set to be merged.
+
+        Returns:
+            _KnowledgeBaseSet: The merged knowledge base set.
+        """
+
+        # Merge the knowledge base set into the knowledge base set
+        return _KnowledgeBaseSet(self.knowledge_base_set + knowledge_base_set.knowledge_base_set)
 
 # The RAGTool class
 class RAGTool:
     """
     A class for RAG (Retrieval-Augmented Generation).
     """
+
+    @staticmethod
+    def load_knowledge(path: str = "knowledge_base.klb") -> _KnowledgeBaseSet:
+        """
+        Load the knowledge base set from a file.
+
+        Args:
+            path (str) = "knowledge_base.klb": The path to load the knowledge base set.
+
+        Returns:
+            _KnowledgeBaseSet: The knowledge base set.
+        """
+
+        # Load the knowledge base set from a file
+        with open(path, "rb") as file:
+            return pickle.load(file)
 
     @staticmethod
     def __build_knowledge_base(text_data: str, embedding_model: SentenceTransformer, text_splitter: RecursiveCharacterTextSplitter, progress: Progress) -> _KnowledgeBaseSet:
@@ -244,7 +304,7 @@ class RAGTool:
 
         return knowledge_base_set
 
-    def match_knowledge(self, knowledge_base: _KnowledgeBase | _KnowledgeBaseSet, prompt: str, top_k: int = 10, threshold_score: float = 0.82) -> list[tuple[float, str]]:
+    def match_knowledge(self, knowledge_base: _KnowledgeBase | _KnowledgeBaseSet, prompt: str, top_k: int = 10, threshold_score: float = 0.75) -> list[tuple[float, str]]:
         """
         Match the prompt with the knowledge base.
 
@@ -252,7 +312,7 @@ class RAGTool:
             knowledge_base (_KnowledgeBase | _KnowledgeBaseSet): The knowledge base.
             prompt (str): The prompt to be matched.
             top_k (int) = 10: The number of top matches to return.
-            threshold_score (float) = 0.82: The threshold score for the top matches.
+            threshold_score (float) = 0.75: The threshold score for the top matches.
 
         Returns:
             list[tuple[float, str]]: The top matches with their scores and the corresponding chunks.
@@ -272,7 +332,7 @@ class RAGTool:
         matched_results: list[tuple[float, str]] = knowledge_base.match_knowledge(self.embedding_model, prompt, top_k, threshold_score)
 
         # Update the progress
-        self.progress._update_progress(pss.KL_BASE_MATCHED, f"Knowledge base matched with prompt '{prompt}'.", {
+        self.progress._update_progress(pss.KL_BASE_MATCHED, f"Knowledge base matched with prompt '{prompt}' with {len(matched_results)} results.", {
             "knowledge_base": knowledge_base,
             "prompt": prompt,
             "top_k": top_k,
@@ -281,7 +341,7 @@ class RAGTool:
             "total_matched_results": len(matched_results)
         })
 
-        show_debug(f"Knowledge base matched with prompt '{prompt}'.")
+        show_debug(f"Knowledge base matched with prompt '{prompt}' with {len(matched_results)} results.")
 
         self.progress._update_progress(pss.IDLE)
 
