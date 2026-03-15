@@ -21,7 +21,7 @@
 SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 ## Package Latest Version
-- 1.5.0
+- 1.6.0
 
 ## Features
 - 🌐 **Web Search** – Uses Tavily API to fetch relevant search results.
@@ -33,8 +33,8 @@ SmartWebSearch is a Python package that combines the Tavily search API with Retr
 ## Environment
 - **Python 3.12 or above**
 - **Latest Version of Google Chrome**
-- **Windows 11 Pro 64-bit** (macOS haven't tested)
-- **Python Packages** (requests, bs4, selenium, markdownify, tavily, numpy, sentence_transformers, langchain_text_splitters)
+- **Windows 11 / macOS 15 Sequoia (Apple Silicon chips (M-series) are required for supporting PyTorch 2.4.0 or above) or above**
+- **Python Packages** (requests, bs4, selenium, markdownify, tavily, numpy, sentence_transformers, langchain_text_splitters, rich, art, langdetect)
 
 ## Installation
 
@@ -123,6 +123,29 @@ search.search(prompt, stream_summary_callback)
 print("\n=== Deep Search (full page content + RAG) ===")
 search.deepsearch(prompt, stream_summary_callback, depth = 'HIGH') # You can set the search depth here with ('MINIMAL', 'LOW', 'MEDIUM', 'HIGH')
 ```
+
+## SmartWebSearch CLI Tool (New feature in SmartWebSearch v1.6.0)
+
+You can use the SmartWebSearch CLI tool to run a search or deep search.
+
+After you install the SmartWebSearch package by command `pip install smartwebsearch`, you can run the CLI tool by command `sws-cli`.
+
+Follow the instructions on the screen to set up your API keys, then you can start using the CLI tool to search.
+
+**Note**: There is **no context memory** in the CLI tool, every search is independent.
+
+### Commands & Usages
+**Note**: `<> = Required, [] = Optional, () = Available Options`
+
+- `> <prompt>`: Start a new search in current search mode with the given prompt
+- `> /help`: Show the help message
+- `> /search`: Switch to search mode
+- `> /deepsearch [depth (MINIMAL, LOW, MEDIUM, HIGH)]`: Switch to deep search mode with the given depth
+- `> /reset`: Reset the CLI configuration and API credentials
+- `> /save`: Save the messages to a file (JSON)
+- `> /cls`: Clear the console
+- `> /clear`: Clear the console
+- `> /exit`: Exit the program
 
 ## Search v.s. DeepSearch
 

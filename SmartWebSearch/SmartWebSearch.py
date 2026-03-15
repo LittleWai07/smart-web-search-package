@@ -303,11 +303,11 @@ class SmartWebSearch:
         tasks: list[str] = self.qs.decompose_tasks_with_prompt(prompt)
 
         # Update progress
-        self.progress._update_progress(pss.STORMED, f"Decomposed the prompt '{prompt}' into tasks", {
+        self.progress._update_progress(pss.STORMED, f"Decomposed the prompt '{prompt}' into {len(tasks)} tasks", {
             'tasks': tasks
         })
 
-        show_debug(f"Decomposed the prompt '{prompt}' into tasks")
+        show_debug(f"Decomposed the prompt '{prompt}' into {len(tasks)} tasks")
 
         # Create a task queries container to store the queries for each task
         """

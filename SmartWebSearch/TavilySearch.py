@@ -443,7 +443,7 @@ class TavilySearch:
         """
 
         # Update progress
-        self.progress._update_progress(pss.SEARCHING, f"Searching for '{query}'")
+        self.progress._update_progress(pss.SEARCHING, f"Searching for '{query}'", {"query": query})
 
         # Search for a query using Tavily API
         results: dict[str, Any] = dict(
@@ -799,7 +799,7 @@ class TavilySearch:
             show_debug(f"Finished parsing task {len(search_results)}/{total_results}")
 
             # Update the progress
-            self.progress._update_progress(pss.PARSED, f"Request timed out, returned empty content, parsed {len(search_results)}/{total_results} results for query '{query}'", {
+            self.progress._update_progress(pss.PARSING, f"Request timed out, returned empty content, parsed {len(search_results)}/{total_results} results for query '{query}'", {
                 "error": "REQUEST_TIMEOUT",
                 "query": query,
                 "current": len(search_results),

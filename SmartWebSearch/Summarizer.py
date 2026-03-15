@@ -12,6 +12,7 @@ from SmartWebSearch.KeyCheck import KeyCheck
 from datetime import datetime
 from SmartWebSearch.AIModel import AIModel
 from SmartWebSearch.Progress import _ProgressData, ProgressStatusSelector as pss
+from langdetect import detect
 
 # Summarizer Class
 class Summarizer:
@@ -57,7 +58,7 @@ class Summarizer:
         - 严格基于资料：所有总结内容必须完全来源于提供的数据，不得添加个人知识、猜测或外部信息。若没有相关资料、资料不足或者与提示词无关，需如实说明资料不足或者与提示词无关，不能根据你的个人知识或猜测给出答案。
         - 遵循输出要求：按照提示词中指定的风格、长度、格式（如段落、要点、编号等）组织回答。如果提示词中未明确格式，则以列点或列项的方式组织回答，输出清晰、有条理的文本，便于用户快速获取关键信息。回答中不得包含“根据搜索结果”、“依据搜索结果”、“根据提供的资料”、“Based on the search results”, “Based on the provided information”等“根据搜索结果资料”的相关提示。应该以直接回答用户问题的方式来输出回答。
         - 输出内容要求：回答的内容应符合提示词要求为主，而搜索到的其它资料如果与提示词的搜索主题有关则可以另外列点补充，确保所有相关的信息都在回答中，而不仅限于用户提示词要求的指定搜索主题范围，但与提示词的搜索主题完全无关的内容不得包含。回答根据搜索内容尽可能回答清晰且详细，但不得额外胡乱编造和参杂不实内容。
-        - 总结语言要求：总结的语言必须与用户的查询提示词“{prompt}”的语言保持一致（例如，用户的查询提示词为中文，则总结使用中文；用户的查询提示词为英文，则总结使用英文）。
+        - 总结语言要求：总结的语言必须为{lang}，以确保输出语言与用户提示词的语言一致。
         - 保持客观中立：仅陈述事实，不掺杂主观评价或观点。
 
         示例（仅供理解，实际执行时以用户输入为准）：
@@ -98,7 +99,7 @@ class Summarizer:
                 [
                     {
                         "role": "user",
-                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt))
                     }
                 ],
                 grab_content
@@ -113,7 +114,7 @@ class Summarizer:
                 [
                     {
                         "role": "user",
-                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt))
                     }
                 ]
             )

@@ -243,10 +243,12 @@ class RAGTool:
                 "eta": (timedelta) * (len(chunk_sets) - idx)
             }, idx / len(chunk_sets))
 
-            show_debug(f"Created knowledge base set {idx}/{len(chunk_sets)} {f'(Expected completion time: {(datetime.datetime.now() + (timedelta) * (len(chunk_sets) - idx)).strftime('%H:%M:%S')})...' if len(chunk_sets) - idx > 0 else ''}")    
+            show_debug(f"Created knowledge base set {idx}/{len(chunk_sets)} {f'(eta. {(timedelta) * (len(chunk_sets) - idx)}) ...' if len(chunk_sets) - idx > 0 else ''}")    
         
         # Update the progress
-        progress._update_progress(pss.KL_BASE_CREATED, f"Knowledge base set created.")
+        progress._update_progress(pss.KL_BASE_CREATED, f"Knowledge base set created.", {
+            "total": len(chunk_sets)
+        })
 
         show_debug(f"Knowledge base set created.")
 

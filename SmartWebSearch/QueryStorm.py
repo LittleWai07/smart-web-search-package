@@ -10,6 +10,7 @@ from typing import Any
 import requests
 import datetime
 from SmartWebSearch.AIModel import AIModel
+from langdetect import detect
 
 # QueryStorm Class
 class QueryStorm:
@@ -52,7 +53,7 @@ class QueryStorm:
         - 如果有多个任务，请用“&&”将每个任务提示词连接起来。
         - 如果只有一个任务，直接输出该任务提示词，不加“&&”。
         - 输出时不要包含任何其他解释或文字，只输出格式化后的任务提示词字符串。
-        - 输出的语言必须与用户的提示词“{prompt}”的语言保持一致（例如，用户的提示词为中文，则总结使用中文；用户的提示词为英文，则总结使用英文）。
+        - 输出的语言必须为“{lang}”，以确保输出语言与用户提示词的语言一致。
 
         示例
         示例1：
@@ -90,7 +91,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = u_prompt)
+                    "content": prompt.format(prompt = u_prompt, lang = detect(u_prompt))
                 }
             ]
         )
@@ -98,12 +99,12 @@ class QueryStorm:
         # Return the decomposed task prompts
         return [ i.strip() for i in res["choices"][0]["message"]["content"].split("&&") ]
 
-    def storm_with_summary(self, prompt: str, summary: str) -> list[str]:
+    def storm_with_summary(self, u_prompt: str, summary: str) -> list[str]:
         """
         Generate auxiliary queries based on the prompt and summary of the search results.
 
         Args:
-            prompt (str): The prompt.
+            u_prompt (str): The prompt.
             summary (str): The summary of the search results.
 
         Returns:
@@ -122,7 +123,7 @@ class QueryStorm:
         - 仅输出搜索辅助关键词，不包含任何其他文字或解释。
         - 每个搜索辅助关键词之间用一个空格“ ”隔开。
         - 如果搜索辅助关键词内包含多个单词，请用加号“+”连接，不要使用空格或其他分隔符。
-        - 关键词的语言必须与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
+        - 输出的语言必须为“{lang}”，以确保输出语言与用户提示词的语言一致。
 
         示例：
         输入：
@@ -138,7 +139,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = prompt, summary = summary, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                    "content": prompt.format(prompt = u_prompt, summary = summary, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt))
                 }
             ]
         )
@@ -172,7 +173,7 @@ class QueryStorm:
         - 如果提示词中提到了时间点，如年份、月份和日期，应该把这些时间点以及相关的关键词包含在主要关键词中，而不是把时间点单独作为主要关键词。
         - 如果用户在提示词中明确指明需要搜索与核心主题相关的具体内容，则输出「主要关键词 + 辅助关键词」，且辅助关键词数量不超过5个。
         - 不要生成用戶沒有指明需要搜索与核心主题相关的具体内容的搜索辅助关键词。
-        - 关键词语言：关键词的语言必须与用户提示词的语言保持一致（例如，用户提示词为中文，则关键词使用中文；用户提示词为英文，则关键词使用英文），以确保搜索结果的相关性。
+        - 关键词语言：关键词语言必须为“{lang}”，以确保输出语言与用户提示词的语言一致。
         
         输出格式要求：
         - 仅输出关键词本身，不包含任何解释或附加文字。
@@ -197,7 +198,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = u_prompt, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+                    "content": prompt.format(prompt = u_prompt, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt)),
                 }
             ]
         )

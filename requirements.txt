@@ -6,3 +6,6 @@ tavily
 numpy
 sentence_transformers
 langchain_text_splitters
+rich
+art
+langdetect

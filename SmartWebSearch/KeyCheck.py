@@ -76,7 +76,7 @@ class KeyCheck:
 
         # If the key is invalid, raise an exception
         if res.status_code != 200 and KeyCheck.RAISE_ERROR:
-            raise InvalidKeyError(f"Invalid Tavily API key: {tavily_api_key}")
+            raise InvalidKeyError(f"Invalid Tavily API key: '{tavily_api_key[:10]}...{tavily_api_key[-10:]}'")
 
         # Return True if the key is valid, False otherwise
         return res.status_code == 200
