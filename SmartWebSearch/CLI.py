@@ -256,10 +256,16 @@ class CLI:
             
             # Check if the user input is not empty
             if not u_prompt.strip():
+                # Remove the progress listener
+                CLI.WEB_SEARCH.progress.remove_progress_listener(status)
+
                 continue
 
             # Check if the user input is start with '/'
             if u_prompt.startswith('/'):
+                # Remove the progress listener
+                CLI.WEB_SEARCH.progress.remove_progress_listener(status)
+
                 # Check user input command
                 cmd: str = u_prompt[1:].strip().lower()
                 cmd_list: list[str] = cmd.split()
@@ -276,6 +282,9 @@ class CLI:
 
             # Check if the user prompt less than 10 characters
             if len(u_prompt) < 10:
+                # Remove the progress listener
+                CLI.WEB_SEARCH.progress.remove_progress_listener(status)
+
                 print(f"[WARNING] Your prompt '{u_prompt}' is too short. Please enter a longer prompt.")
                 continue
 
