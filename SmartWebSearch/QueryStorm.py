@@ -123,12 +123,19 @@ class QueryStorm:
         - 仅输出搜索辅助关键词，不包含任何其他文字或解释。
         - 每个搜索辅助关键词之间用一个空格“ ”隔开。
         - 如果搜索辅助关键词内包含多个单词，请用加号“+”连接，不要使用空格或其他分隔符。
+        - 每个搜索辅助关键词不得多于5个单词连接。
         - 输出的语言必须为“{lang}”，以确保输出语言与用户提示词的语言一致。
 
         示例：
         输入：
         prompt = 什麽是三角函数？
         summary = 三角函数是数学很常见的一类关于角度的函数。三角函数将直角三角形的内角和它的两边的比值相关联，亦可以用单位圆的各种有关线段的长短的等价来定义。三角函数在研究三角形和圆形等几何形状的性质时有着重要的作用，亦是研究振动、波、天体运动和各种周期性现象的基础数学工具。在数学分析上，三角函数亦定义为无穷级数或特定微分方程式的解，允许它们的取值扩展到任意实数值，甚至是复数值。
+        输出：
+        定义 用途 基础+公式
+
+        输入：
+        prompt = What is a trigonometric function？
+        summary = Trigonometric functions are a common class of angle-related functions in mathematics. They relate the interior angles of a right triangle to the ratios of its two sides, and can also be defined using the equivalence of various line segments related to the lengths of a unit circle. Trigonometric functions play a crucial role in studying the properties of geometric shapes such as triangles and circles, and are fundamental mathematical tools for studying vibrations, waves, celestial motion, and various periodic phenomena. In mathematical analysis, trigonometric functions are also defined as solutions to infinite series or specific differential equations, allowing their values ​​to be extended to any real number, and even complex numbers.
         输出：
         definitions purposes general+formulas
 
@@ -180,6 +187,8 @@ class QueryStorm:
         - 关键词之间用一个空格「 」分隔。
         - 如果一个关键词由多个词语组成，请用加号「+」连接（例如：artificial+intelligence 或 人工智能+应用），以确保该关键词在搜索时被视为一个整体。
         - 第一个关键词始终为主要关键词，若存在辅助关键词则依次排列其后（最多5个）。
+        - 主要关键词不得多于3个单词连接。
+        - 每个搜索辅助关键词不得多于5个单词连接。
         
         示例：
         - 用户提示词：What is trigonometry?（未指定具体内容）

@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
    name='SmartWebSearch',
-   version='1.6.2',
+   version='1.6.4',
    description='SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.',
    long_description=long_description,
    long_description_content_type="text/markdown",
@@ -15,7 +15,7 @@ setup(
    author_email='jacksonlam.temp@gmail.com',
    license='MIT',
    packages=['SmartWebSearch'],
-   install_requires=["requests", "bs4", "selenium", "markdownify", "tavily", "numpy", "sentence_transformers", "langchain_text_splitters", "rich", "art", "langdetect"],
+   install_requires=["requests", "bs4", "selenium", "markdownify", "tavily", "numpy", "sentence_transformers", "langchain_text_splitters", "rich", "art", "langid"],
    entry_points={
       'console_scripts': [
          'sws-cli = SmartWebSearch:CLI.run'
