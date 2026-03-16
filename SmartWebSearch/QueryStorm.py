@@ -10,7 +10,7 @@ from typing import Any
 import requests
 import datetime
 from SmartWebSearch.AIModel import AIModel
-from langdetect import detect
+from langid import classify
 
 # QueryStorm Class
 class QueryStorm:
@@ -91,7 +91,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = u_prompt, lang = detect(u_prompt))
+                    "content": prompt.format(prompt = u_prompt, lang = classify(u_prompt)[0])
                 }
             ]
         )
@@ -139,7 +139,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = u_prompt, summary = summary, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt))
+                    "content": prompt.format(prompt = u_prompt, summary = summary, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = classify(u_prompt)[0])
                 }
             ]
         )
@@ -198,7 +198,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = u_prompt, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt)),
+                    "content": prompt.format(prompt = u_prompt, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = classify(u_prompt)[0]),
                 }
             ]
         )

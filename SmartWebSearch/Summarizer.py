@@ -12,7 +12,7 @@ from SmartWebSearch.KeyCheck import KeyCheck
 from datetime import datetime
 from SmartWebSearch.AIModel import AIModel
 from SmartWebSearch.Progress import _ProgressData, ProgressStatusSelector as pss
-from langdetect import detect
+from langid import classify
 
 # Summarizer Class
 class Summarizer:
@@ -99,7 +99,7 @@ class Summarizer:
                 [
                     {
                         "role": "user",
-                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt))
+                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = classify(u_prompt)[0])
                     }
                 ],
                 grab_content
