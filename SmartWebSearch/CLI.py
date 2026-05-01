@@ -90,8 +90,8 @@ class CLI:
         # Process 3/4 - OpenAI compatible API AI Model
         print(CLI.WHITE_LINE_MD)
         print("<Process 3/4> What is your OpenAI compatible model?")
-        openai_comp_api_model: str = input("Enter your OpenAI compatible model ----- [deepseek-chat] >> ").strip()
-        openai_comp_api_model: str = openai_comp_api_model if openai_comp_api_model else "deepseek-chat"
+        openai_comp_api_model: str = input("Enter your OpenAI compatible model ----- [deepseek-v4-flash] >> ").strip()
+        openai_comp_api_model: str = openai_comp_api_model if openai_comp_api_model else "deepseek-v4-flash"
         print(f"[OK ✅] Current OpenAI compatible API model set to: '{openai_comp_api_model}'")
 
         # Process 4/4 - Tavily API key
@@ -204,7 +204,7 @@ class CLI:
 
         def status(s: sws._ProgressData):
             # Start the live console and print a single line when the summary starts to be generated
-            if s.status == pss.CONCLUDING:
+            if s.status == pss.FINAL_CONCLUDING:
                 live.start()
                 print(CLI.SINGLE_LINE)
                 print(CLI.WHITE_LINE_SM)

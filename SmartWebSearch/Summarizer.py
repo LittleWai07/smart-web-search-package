@@ -56,6 +56,7 @@ class Summarizer:
         任务说明：
         - 理解用户意图：仔细阅读用户给出的提示词，明确用户希望获得什么样的总结——是简洁的要点概括、详细的分析报告、特定问题的答案，还是按照某种格式（如表格、列表）整理信息。
         - 严格基于资料：所有总结内容必须完全来源于提供的数据，不得添加个人知识、猜测或外部信息。若没有相关资料、资料不足或者与提示词无关，需如实说明资料不足或者与提示词无关，不能根据你的个人知识或猜测给出答案。
+        - 资料混乱与准确性：如果资料结构过于混乱、可能出现前后文冲突等不准确问题，则跳过这些不准确的资料，继续总结其他准确的资料。
         - 遵循输出要求：按照提示词中指定的风格、长度、格式（如段落、要点、编号等）组织回答。如果提示词中未明确格式，则以列点或列项的方式组织回答，输出清晰、有条理的文本，便于用户快速获取关键信息。回答中不得包含“根据搜索结果”、“依据搜索结果”、“根据提供的资料”、“Based on the search results”, “Based on the provided information”等“根据搜索结果资料”的相关提示。应该以直接回答用户问题的方式来输出回答。
         - 输出内容要求：回答的内容应符合提示词要求为主，而搜索到的其它资料如果与提示词的搜索主题有关则可以另外列点补充，确保所有相关的信息都在回答中，而不仅限于用户提示词要求的指定搜索主题范围，但与提示词的搜索主题完全无关的内容不得包含。回答根据搜索内容尽可能回答清晰且详细，但不得额外胡乱编造和参杂不实内容。
         - 总结语言要求：总结的语言必须为{lang}，以确保输出语言与用户提示词的语言一致。
@@ -86,6 +87,14 @@ class Summarizer:
                 # If choices in the response is empty, return an empty string
                 if not res["choices"]:
                     return ''
+                
+                # If delta in the first choice is empty, return an empty string
+                if not res["choices"][0].get("delta"):
+                    return ''
+                
+                # If content not in the delta of the first choice, return an empty string
+                if not res["choices"][0]["delta"].get("content"):
+                    return ''
 
                 # Return the content
                 return stream_cb(res["choices"][0]["delta"]["content"] if res["choices"][0]["delta"]["content"] else '')
@@ -114,7 +123,7 @@ class Summarizer:
                 [
                     {
                         "role": "user",
-                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = detect(u_prompt))
+                        "content": prompt.format(prompt = u_prompt, data = data, datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = classify(u_prompt))
                     }
                 ]
             )

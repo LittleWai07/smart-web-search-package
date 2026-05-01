@@ -21,13 +21,13 @@
 SmartWebSearch is a Python package that combines the Tavily search API with Retrieval-Augmented Generation (RAG), LLM-powered query expansion, and web content extraction to perform intelligent, deep web searches with automated summarization.
 
 ## Package Latest Version
-- 1.6.4
+- 1.7.0
 
 ## Features
 - 🌐 **Web Search** – Uses Tavily API to fetch relevant search results.
 - 🧠 **Query Expansion** – Leverages LLMs (e.g., DeepSeek) to decompose complex queries and generate auxiliary searches.
 - 📄 **Content Extraction** – Fetches full page content using headless Chrome and filters noise.
-- 🔍 **RAG Pipeline** – Embeds documents with multilingual models (e.g., multilingual-e5-base) and retrieves context-aware chunks.
+- 🔍 **RAG Pipeline** – Embeds documents with multilingual models (e.g., multilingual-e5-small) and retrieves context-aware chunks.
 - 📝 **Summarization** – Summarizes retrieved content using LLMs.
 
 ## Environment
@@ -162,8 +162,9 @@ Follow the instructions on the screen to set up your API keys, then you can star
 3. **The 1st-Term Search**: The first term of web searching. Use the main search query to search first, then use the main search query with each auxiliary query as matches to search. After that, Fetch all the page contents and grab all the summaries from the search results. This process is repeated for each task.
 4. **Brainstorm Extra Auxiliary Queries**: Brainstorm the extra queries for each task with AI model. Each task includes not more than 12 extra auxiliary queries (According to the search depth). (This step will be skipped if the search depth is set to 'MINIMAL')
 5. **The 2nd-Term Search**: Use the main search query with each extra auxiliary query as matches to search. After that, Fetch all the page contents and grab all the summaries from the search results. This process is repeated for each task. (This step will be skipped if the search depth is set to 'MINIMAL')
-6. **RAG Pipeline**: Embed the page contents with multilingual models (e.g., multilingual-e5-base) and retrieve context-aware chunks.
-7. **Final Conclusion**: Do a final conclusion with all summaries and RAG matches with AI model.
+6. **RAG Pipeline**: Embed the page contents with multilingual models for each task (e.g., multilingual-e5-base) and retrieve context-aware chunks.
+7. **Task Conclusion**: Do a conclusion with summaries and RAG matches for each task with AI model.
+8. **Final Conclusion**: Do a final conclusion with all the task conclusions or summaries with AI model.
 
 ### Differences Between Each Search Depth (Only For DeepSearch):
 
@@ -181,8 +182,9 @@ Follow the instructions on the screen to set up your API keys, then you can star
 | The 1st-Term Search | ✅ (Grab **summaries** only) | ✅ (Grab **summaries** and fetch **page contents** with **80k chars** maximum content for each page) | ✅ (Grab **summaries** and fetch **page contents** with **120k chars** maximum content for each page) | ✅ (Grab **summaries** and fetch **page contents** with **150k chars** maximum content for each page) | ✅ (Grab **summaries** and fetch **page contents** with **180k chars** maximum content for each page) |
 | Brainstorm Extra Auxiliary Queries | ❌ | ❌ | ✅ (Maximum **3 extra auxiliary queries**) | ✅ (Maximum **5 extra auxiliary queries**) | ✅ (Maximum **12 extra auxiliary queries**) |
 | The 2nd-Term Search | ❌ | ❌ | ✅ | ✅ | ✅ |
-| RAG Pipeline | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Final Conclusion | ✅ (Conclude **summaries**) | ✅ (Conclude **summaries** and **RAG matches**) | ✅ (Conclude **summaries** and **RAG matches**) | ✅ (Conclude **summaries** and **RAG matches**) | ✅ (Conclude **summaries** and **RAG matches**) |
+| RAG Pipeline | ❌ | ✅ (For every task) | ✅ (For every task) | ✅ (For every task) | ✅ (For every task) |
+| Task Conclusion | ❌ | ✅ (For every task, conclude **summaries** and **RAG matches**) | ✅ (For every task, conclude **summaries** and **RAG matches**) | ✅ (For every task, conclude **summaries** and **RAG matches**) | ✅ (For every task, conclude **summaries** and **RAG matches**) |
+| Final Conclusion | ✅ (Conclude **summaries**) | ✅ (Conclude **task conclusions**) | ✅ (Conclude **task conclusions**) | ✅ (Conclude **task conclusions**) | ✅ (Conclude **task conclusions**) |
 
 
 **Note**: Detailed API documentation is under development. For now, please refer to the source code and docstrings.

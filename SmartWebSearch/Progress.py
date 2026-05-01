@@ -10,7 +10,7 @@ from typing import Any, TypeAlias, Literal, Callable
 from datetime import datetime
 
 # Type Alias
-_ProgressStatus: TypeAlias = Literal['IDLE', 'STORMING', 'STORMED', 'SEARCHING', 'SEARCHED', 'PARSING', 'PARSED', 'KL_BASE_CREATING', 'KL_BASE_CREATED', 'KL_BASE_MATCHING', 'KL_BASE_MATCHED', 'CONCLUDING', 'CONCLUDED', 'PART_COMPLETED', 'COMPLETED', 'REQUEST_TIMEOUT']
+_ProgressStatus: TypeAlias = Literal['IDLE', 'STORMING', 'STORMED', 'SEARCHING', 'SEARCHED', 'PARSING', 'PARSED', 'KL_BASE_CREATING', 'KL_BASE_CREATED', 'KL_BASE_MATCHING', 'KL_BASE_MATCHED', 'TASK_CONCLUDING', 'TASK_CONCLUDED', 'FINAL_CONCLUDING', 'FINAL_CONCLUDED', 'KL_BASE_SAVING', 'KL_BASE_SAVED', 'PART_COMPLETED', 'COMPLETED', 'REQUEST_TIMEOUT', 'MODEL_CALLING', 'MODEL_CALLED', 'STREAM_STARTED', 'STREAM_ENDED']
 
 # Progress Classes
 class ProgressStatusSelector:
@@ -30,8 +30,10 @@ class ProgressStatusSelector:
     KL_BASE_CREATED: _ProgressStatus = 'KL_BASE_CREATED'
     KL_BASE_MATCHING: _ProgressStatus = 'KL_BASE_MATCHING'
     KL_BASE_MATCHED: _ProgressStatus = 'KL_BASE_MATCHED'
-    CONCLUDING: _ProgressStatus = 'CONCLUDING'
-    CONCLUDED: _ProgressStatus = 'CONCLUDED'
+    TASK_CONCLUDING: _ProgressStatus = 'TASK_CONCLUDING'
+    TASK_CONCLUDED: _ProgressStatus = 'TASK_CONCLUDED'
+    FINAL_CONCLUDING: _ProgressStatus = 'FINAL_CONCLUDING'
+    FINAL_CONCLUDED: _ProgressStatus = 'FINAL_CONCLUDED'
     KL_BASE_SAVING: _ProgressStatus = 'KL_BASE_SAVING'
     KL_BASE_SAVED: _ProgressStatus = 'KL_BASE_SAVED'
     PART_COMPLETED: _ProgressStatus = 'PART_COMPLETED'

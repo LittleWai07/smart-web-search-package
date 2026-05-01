@@ -11,3 +11,4 @@ sws_config.json
 /SmartWebSearch.egg-info
 *.klb
 *.qrs
+cli_config*.json

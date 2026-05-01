@@ -56,7 +56,7 @@ class _KnowledgeBase:
         # Loop through the knowledge base and find the top matches
         matches: list[tuple[float, str]] = []
         for i, knowledge_vector in enumerate(self.knowledge_vector):
-            score: float = np.dot(knowledge_vector, prompt_vector)
+            score: float = float(np.dot(knowledge_vector, prompt_vector))
             matches.append((score, self.knowledge_base[i].strip()))
 
         # Sort the matches by score
@@ -118,22 +118,6 @@ class _KnowledgeBaseSet:
 
         # Return the top matches
         return [match for match in matches[:top_k + 5]]
-    
-    def save_knowledge(self, dir: str = "", filename: str = "knowledge_base") -> None:
-        """
-        Save the knowledge base set to a file.
-
-        Args:
-            dir (str) = "": The directory to save the knowledge base set.
-            filename (str) = "knowledge_base": The filename to save the knowledge base set.
-
-        Returns:
-            None
-        """
-
-        # Save the knowledge base set to a file
-        with open(Path(dir, f"{filename}.klb"), "wb") as file:
-            pickle.dump(self, file)
 
     def __add__(self, knowledge_base_set: "_KnowledgeBaseSet") -> "_KnowledgeBaseSet":
         """
@@ -154,22 +138,6 @@ class RAGTool:
     """
     A class for RAG (Retrieval-Augmented Generation).
     """
-
-    @staticmethod
-    def load_knowledge(path: str = "knowledge_base.klb") -> _KnowledgeBaseSet:
-        """
-        Load the knowledge base set from a file.
-
-        Args:
-            path (str) = "knowledge_base.klb": The path to load the knowledge base set.
-
-        Returns:
-            _KnowledgeBaseSet: The knowledge base set.
-        """
-
-        # Load the knowledge base set from a file
-        with open(path, "rb") as file:
-            return pickle.load(file)
 
     @staticmethod
     def __build_knowledge_base(text_data: str, embedding_model: SentenceTransformer, text_splitter: RecursiveCharacterTextSplitter, progress: Progress) -> _KnowledgeBaseSet:
@@ -209,6 +177,9 @@ class RAGTool:
 
         # Remove the chunks includes verifying humans
         chunks: list[str] = [chunk for chunk in chunks if 'verify' not in chunk.lower() or 'human' not in chunk.lower()]
+
+        # Remove the chunks includes copyrights
+        chunks: list[str] = [chunk for chunk in chunks if 'copyright' not in chunk.lower() and '©' not in chunk.lower()]
 
         # Add prefix for each chunk
         chunks: list[str] = [f"passage: {chunk}" for chunk in chunks]
@@ -260,12 +231,12 @@ class RAGTool:
 
         return knowledge_base_set
 
-    def __init__(self, embedding_model_name: str = 'intfloat/multilingual-e5-base') -> None:
+    def __init__(self, embedding_model_name: str = 'intfloat/multilingual-e5-small') -> None:
         """
         Initialize the RAGTool object.
         
         Args:
-            embedding_model_name (str) = 'intfloat/multilingual-e5-base': The name of the embedding model.
+            embedding_model_name (str) = 'intfloat/multilingual-e5-small': The name of the embedding model.
         
         Returns:
             None
@@ -273,8 +244,8 @@ class RAGTool:
 
         # Initialize the text splitter
         self.text_splitter: RecursiveCharacterTextSplitter = RecursiveCharacterTextSplitter(
-            chunk_size = 400,
-            chunk_overlap = 50
+            chunk_size = 1000,
+            chunk_overlap = 150
         )
 
         # Initialize the SentenceTransformer model

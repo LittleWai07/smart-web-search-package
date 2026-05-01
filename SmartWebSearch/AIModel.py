@@ -86,6 +86,7 @@ class AIModel:
 
         # If the key is invalid, raise an exception
         if res.status_code != 200 and raise_error:
+            print(res.text)
             raise InvalidKeyError(f"Invalid OpenAI Compatible API key: '{self.openai_comp_api_key[:10]}...{self.openai_comp_api_key[-10:]}'")
 
         return res.status_code == 200

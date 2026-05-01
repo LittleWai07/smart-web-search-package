@@ -10,14 +10,16 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag, NavigableString, PageElement
 from markdownify import markdownify
 from tavily import TavilyClient
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Literal, TypeAlias
 from SmartWebSearch.Debugger import show_debug, create_debug_file
 from SmartWebSearch.ChromeDriver import ChromeDriver
 from SmartWebSearch.KeyCheck import KeyCheck
-from threading import Thread, active_count
+from threading import Thread
 from SmartWebSearch.Progress import Progress
 from SmartWebSearch.Progress import ProgressStatusSelector as pss
 import time
+import requests
+import os
 
 if TYPE_CHECKING:
     from SmartWebSearch.RAGTool import RAGTool, _KnowledgeBaseSet
@@ -108,15 +110,18 @@ class _SearchResult:
 
         return self.__str__()
 
-    def to_str(self) -> str:
+    def to_str(self, include_snippet: bool = True) -> str:
         """
         Return the title, snippet and page content of the search result.
+
+        Args:
+            include_snippet (bool) = True: Whether to include the snippet in the result.
 
         Returns:
             str: The title, snippet and page content of the search result.
         """
 
-        return f"{self.title}\n{self.snippet}" + (f"\n{self.page_content.content}" if self.page_content else "")
+        return self.title + (f"\n{self.snippet}" if include_snippet else "") + (f"\n{self.page_content.content}" if self.page_content else "")
 
 class _SearchResults:
     """
@@ -182,18 +187,19 @@ class _SearchResults:
 
         return self.results[index]
 
-    def to_str(self, include_summary: bool = True) -> str:
+    def to_str(self, include_summary: bool = True, include_snippet: bool = True) -> str:
         """
         Return the summary and each result of the search results.
 
         Args:
             include_summary (bool) = True: Whether to include the summary. Defaults to True.
+            include_snippet (bool) = True: Whether to include the snippet in the result.
 
         Returns:
             str: The summary and each result of the search results.
         """
 
-        return (f"{self.summary}\n" if include_summary else "") + "\n".join([result.to_str() for result in self.results])
+        return (f"{self.summary}\n" if include_summary else "") + "\n".join([result.to_str(include_snippet) for result in self.results])
 
 class SearchResultsContainer:
     """
@@ -259,7 +265,26 @@ class SearchResultsContainer:
 
         return [result.summary for result in self.results if isinstance(result, _SearchResults)]
     
-    def to_str(self, include_summary: bool = True) -> str:
+    def get_sources(self) -> list[tuple[str, str, str]]:
+        """
+        Return the sources of the search results.
+
+        Returns:
+            list[tuple[str, str, str]]: The sources of the search results.
+        """
+
+        sources: list[tuple[str, str, str]] = []
+        for result in self.results:
+            if isinstance(result, _SearchResults):
+                for s_result in result.results:
+                    if not s_result.page_content: continue
+                    sources.append((s_result.title, s_result.snippet, s_result.url))
+            else:
+                if not result.page_content: continue
+                sources.append((result.title, result.snippet, result.url))
+        return sources
+    
+    def to_str(self, include_summary: bool = True, include_snippet: bool = True) -> str:
         """
         Return the summary and each result of the search results.
 
@@ -270,22 +295,23 @@ class SearchResultsContainer:
             str: The summary and each result of the search results.
         """
 
-        return "\n".join([result.to_str(include_summary = include_summary) if isinstance(result, _SearchResults) else result.to_str() for result in self.results])
+        return "\n".join([result.to_str(include_summary = include_summary, include_snippet = include_snippet) if isinstance(result, _SearchResults) else result.to_str(include_snippet = include_snippet) for result in self.results])
     
-    def to_rag(self, rag_tool: "RAGTool", include_summary: bool = True) -> "_KnowledgeBaseSet":
+    def to_rag(self, rag_tool: "RAGTool", include_summary: bool = True, include_snippet: bool = True) -> "_KnowledgeBaseSet":
         """
         Return the RAGTool object.
 
         Args:
             rag_tool (RAGTool): The RAGTool object.
             include_summary (bool) = True: Whether to include the summary. Defaults to True.
+            include_snippet (bool) = True: Whether to include the snippet in the result.
 
         Returns:
             _KnowledgeBaseSet: The knowledge base set.
         """
 
         # Build the knowledge base
-        kl_base_set: _KnowledgeBaseSet = rag_tool.build_knowledge(self.to_str(include_summary = include_summary))
+        kl_base_set: _KnowledgeBaseSet = rag_tool.build_knowledge(self.to_str(include_summary = include_summary, include_snippet = include_snippet))
 
         # Return the RAGTool object and the knowledge base set
         return kl_base_set
@@ -405,6 +431,92 @@ class TavilySearch:
     A class for web searching with Tavily API.
     """
 
+    # Constants
+    FETCHERS: TypeAlias = Literal['REQUESTS', 'SELENIUM']
+    INVALID_SITES_FILE_PATH: str = os.path.join(os.path.dirname(__file__), 'invalid_sites.isl')
+    DEFAULT_INVALID_SITES: list[str] = [
+        "apps",
+        "play",
+        "maps",
+        "drive",
+        "mail",
+        "calendar",
+        ".vip",
+        ".top",
+        ".club",
+        ".xyz",
+        ".wang",
+        ".cc",
+        ".info",
+        ".tool",
+        ".download",
+        ".apk",
+        ".zip",
+        ".exe",
+        ".pdf",
+        "weibo.com",
+        "douyin.com",
+        "bilibili.com",
+        "tiktok.com",
+        "youtube.com",
+        "hao123.com",
+        "2345.com",
+        "instagram.com",
+        "cloudflare.com",
+        "stackoverflow.com",
+        "soundcloud.com",
+        "sap.com",
+        "ebay.com",
+        "google.com",
+        ".google",
+        "google.org",
+        "office.com",
+        "microsoft.com",
+        "x.com",
+        "reddit.com",
+        "spotify.com",
+        "openai.com",
+        "anthropic.com",
+        "shop",
+        "store",
+        "products",
+        "ad.",
+        "nav.",
+        "tool.",
+        "/login",
+        "/register",
+        "/download",
+        "/upload",
+        "/pay",
+        "/cart",
+        "/about",
+        "/contact",
+        "/help",
+        "/faq",
+        "/menu",
+        "/nav",
+        "/widget",
+        "/ad/",
+        "/sponsor",
+        "/promo",
+        "?from=",
+        "?adid=",
+        "?track=",
+        "shorturl.at",
+        "url.cn",
+        "t.cn",
+        "bit.ly"
+    ]
+
+    # Check if the invalid sites not exists, create it
+    if not os.path.exists(INVALID_SITES_FILE_PATH):
+        with open(INVALID_SITES_FILE_PATH, "w", encoding = "utf-8") as f:
+            f.write("\n".join(DEFAULT_INVALID_SITES))
+
+    # Read the invalid sites
+    with open(INVALID_SITES_FILE_PATH, "r", encoding = "utf-8") as f:
+        INVALID_SITES: list[str] = f.read().splitlines()
+
     def __init__(self, api_key: str) -> None:
         """
         Initialize the TavilySearch object.
@@ -455,71 +567,10 @@ class TavilySearch:
         )
 
         # Filtered out results that url is invalid
-        invalid_sites: list[str] = [
-            "apps",
-            "play",
-            "maps",
-            "drive",
-            "mail",
-            "calendar",
-            ".vip",
-            ".top",
-            ".club",
-            ".xyz",
-            ".wang",
-            ".cc",
-            ".info",
-            ".tool",
-            ".download",
-            ".apk",
-            ".zip",
-            ".exe",
-            ".pdf",
-            "weibo.com",
-            "douyin.com",
-            "bilibili.com",
-            "tiktok.com",
-            "youtube.com",
-            "hao123.com",
-            "2345.com",
-            "instagram.com",
-            "cloudflare.com",
-            "stackoverflow.com",
-            "soundcloud.com",
-            "sap.com",
-            "ebay.com",
-            "ad.",
-            "nav.",
-            "tool.",
-            "/login",
-            "/register",
-            "/download",
-            "/upload",
-            "/pay",
-            "/cart",
-            "/about",
-            "/contact",
-            "/help",
-            "/faq",
-            "/menu",
-            "/nav",
-            "/widget",
-            "/ad/",
-            "/sponsor",
-            "/promo",
-            "?from=",
-            "?adid=",
-            "?track=",
-            "shorturl.at",
-            "url.cn",
-            "t.cn",
-            "bit.ly"
-        ]
-
         tmp_results: list[dict[str, Any]] = results["results"]
         results["results"] = []
         for result in tmp_results:
-            for invalid_site in invalid_sites:
+            for invalid_site in TavilySearch.INVALID_SITES:
                 if invalid_site in result["url"]:
                     break
             else:
@@ -647,7 +698,7 @@ class TavilySearch:
         parsed_html: str = ""
 
         # Remove all unnecessary tags
-        unnecessary_tags: list[str] = ["script", "style", "link", "meta", "nav", "header", "footer", "aside", "img", "button", "form", "input", "svg", "canvas", "figure", "select", "checkbox", "label"]
+        unnecessary_tags: list[str] = ["script", "style", "nav", "header", "footer", "aside", "img", "button", "form", "input", "svg", "canvas", "figure", "select", "checkbox", "label"]
         for tag in unnecessary_tags:
             for element in soup.find_all(tag):
                 element.decompose()
@@ -663,9 +714,18 @@ class TavilySearch:
                 if attr not in ["class", "id"]:
                     del element.attrs[attr]
 
+        # Remove all href from a tags
+        for element in soup.find_all("a"):
+            # If the href is exists, remove it
+            if "href" not in element.attrs: continue
+            del element.attrs["href"]
+
         # Remove tags with invalid ids and classes
         invalid_ids: list[str] = [
-            "nav"
+            "nav",
+            "vector-toc-pinned-container",
+            "vector-appearance-pinned-container",
+            "siteSub"
         ]
         invalid_classes: list[str] = [
             "navig",
@@ -685,7 +745,13 @@ class TavilySearch:
             "menu",
             "footer",
             "region-container",
-            "region-list"
+            "region-list",
+            "vector-header",
+            "mw-jump-link",
+            "hatnote",
+            "vector-body-before-content",
+            "g1fwxf12",
+            "g1fwxfm2"
         ]
 
         for element in soup.find_all():
@@ -695,9 +761,15 @@ class TavilySearch:
                 if not (element and element.attrs): continue
                 if element.decomposed: continue
 
-                if element.get(attr):
+                if attr == "id" and element.get(attr):
                     for invalid_id in invalid_ids:
                         if invalid_id in element.get(attr):
+                            element.decompose()
+                            break
+                
+                if attr == "class" and element.get(attr):
+                    for invalid_class in invalid_classes:
+                        if invalid_class in element.get(attr):
                             element.decompose()
                             break
 
@@ -734,35 +806,70 @@ class TavilySearch:
         # Return the parsed markdown
         return parsed_markdown
     
-    def __fetch(self, url: str) -> str:
+    def __fetch(self, url: str, fetcher: FETCHERS = 'REQUESTS') -> str:
         """
         Fetch the page source.
 
         Args:
             url (str): The url of the page.
+            fetcher (FETCHERS) = 'REQUESTS': The fetcher to use.
 
         Returns:
             str: The page source.
         """
 
-        # Create a chrome driver
-        chrome_driver: ChromeDriver = ChromeDriver()
+        match fetcher:
+            case 'SELENIUM':
+                # Create a chrome driver
+                chrome_driver: ChromeDriver = ChromeDriver()
 
-        try:
-            # Load the URL
-            chrome_driver.driver.get(url)
+                try:
+                    # Load the URL
+                    chrome_driver.driver.get(url)
 
-            # Get the page source
-            page_source: str = chrome_driver.driver.page_source
+                    # Get the page source
+                    page_source: str = chrome_driver.driver.page_source
 
-        except Exception:
-            # Request timeout
-            # Return an empty string
-            return ""
-        
-        finally:
-            # Quit the driver
-            chrome_driver.quit()
+                except Exception:
+                    # Request timeout
+                    # Return an empty string
+                    return ""
+                
+                finally:
+                    # Quit the driver
+                    chrome_driver.quit()
+
+            case 'REQUESTS':
+                # Set the user agent
+                headers: dict[str, str] = {
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.142.86 Safari/537.36"
+                }
+
+                try:
+                    # Get the response from the url
+                    response: requests.Response = requests.get(url, headers = headers, timeout = 10)
+
+                except Exception:
+                    # Request timeout
+                    # Return an empty string
+                    return ""
+
+                # If the response status code is not 200
+                if response.status_code != 200:
+                    # Return an empty string
+                    return ""
+
+                # Parse the page source to BeautifulSoup object
+                soup: BeautifulSoup = BeautifulSoup(response.text, "html.parser")
+
+                # Get the meta charset attribute
+                meta_charset: str = soup.find("meta", attrs = {"charset": True}).get("charset") if soup.find("meta", attrs = {"charset": True}) else "utf-8"
+
+                # Set the encoding to utf-8
+                response.encoding = meta_charset
+
+                # Get the page source
+                page_source: str = response.text
 
         # Return the page source
         return page_source
@@ -815,9 +922,45 @@ class TavilySearch:
         show_debug(f"Filtering content from URL: {search_result.url}", importance = "LOW")
 
         # Parse the page source
-        parsed_markdown: str = self.__filter(page_source, search_result.url)        
+        parsed_markdown: str = self.__filter(page_source, search_result.url)      
 
         show_debug(f"Filtered content from URL: {search_result.url}, length: {len(parsed_markdown)}", importance = "LOW")
+
+        # If the parsed_markdown length is less than 800
+        # Try to fetch the page source again with the SELENIUM fetcher
+        if len(parsed_markdown) < 800:
+            # Fetch the URL in the browser
+            show_debug(f"Parsed content length is less than 800, trying to fetch again with SELENIUM fetcher")
+            show_debug(f"Fetching URL: {search_result.url}", importance = "LOW")
+
+            page_source: str = self.__fetch(search_result.url, fetcher = "SELENIUM")
+
+            show_debug(f"Fetched URL: {search_result.url}", importance = "LOW")
+
+            # If the page source is empty
+            if not page_source:
+                # Append the search result to the search results list
+                search_results.append(search_result)
+
+                show_debug(f"Request timed out, returned empty content, URL: {search_result.url}", type = "ERROR")
+                show_debug(f"Finished parsing task {len(search_results)}/{total_results}")
+
+                # Update the progress
+                self.progress._update_progress(pss.PARSING, f"Request timed out, returned empty content, parsed {len(search_results)}/{total_results} results for query '{query}'", {
+                    "error": "REQUEST_TIMEOUT",
+                    "query": query,
+                    "current": len(search_results),
+                    "total": total_results,
+                    "search_result": search_result
+                }, len(search_results) / total_results)
+
+                # Return
+                return
+
+            # Parse the page source
+            parsed_markdown: str = self.__filter(page_source, search_result.url)
+
+            show_debug(f"Filtered content from URL: {search_result.url}, length: {len(parsed_markdown)}", importance = "LOW")
 
         create_debug_file(
             filename = f"parsed-content",

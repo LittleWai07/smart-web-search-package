@@ -99,11 +99,12 @@ class QueryStorm:
         # Return the decomposed task prompts
         return [ i.strip() for i in res["choices"][0]["message"]["content"].split("&&") ]
 
-    def storm_with_summary(self, u_prompt: str, summary: str) -> list[str]:
+    def storm_with_summary(self, main_query: str, u_prompt: str, summary: str) -> list[str]:
         """
         Generate auxiliary queries based on the prompt and summary of the search results.
 
         Args:
+            main_query (str) = None: The main query of the search.
             u_prompt (str): The prompt.
             summary (str): The summary of the search results.
 
@@ -114,7 +115,7 @@ class QueryStorm:
         prompt: str = """你是一个智能搜索助手，专门负责分析用户的搜索意图并生成扩展的搜索辅助关键词。
 
         任务描述：
-        根据用户提供的提示詞“{prompt}”和提示詞相關关键词的搜索结果总结“{summary}”，首先判断用户想搜索的内容的核心类型（例如，概念定义、工具使用、历史背景、技术原理等），然后基于这个类型，延展出更多相关的搜索辅助关键词。这些关键词应帮助用户进一步精确搜索，获取更具体、更深入的信息。
+        根据用户提供的提示詞“{prompt}”、搜索主体“{main_query}”和提示詞相關关键词的搜索结果总结“{summary}”，首先判断用户想搜索的内容的核心类型（例如，概念定义、工具使用、历史背景、技术原理等），然后基于这个类型，延展出更多相关的搜索辅助关键词。这些关键词应帮助用户进一步精确搜索，获取更具体、更深入的信息。
 
         今天的日期时间是“{datetime}”，如果你需要用到这个日期时间用来搜索最近的内容，请在搜索辅助关键词中包含它。
         
@@ -123,22 +124,47 @@ class QueryStorm:
         - 仅输出搜索辅助关键词，不包含任何其他文字或解释。
         - 每个搜索辅助关键词之间用一个空格“ ”隔开。
         - 如果搜索辅助关键词内包含多个单词，请用加号“+”连接，不要使用空格或其他分隔符。
-        - 每个搜索辅助关键词不得多于5个单词连接。
+        - 每个搜索辅助关键词不得多于3个单词连接。
         - 输出的语言必须为“{lang}”，以确保输出语言与用户提示词的语言一致。
+        - 搜索辅助关键词内不得包含搜索主体“{main_query}”
 
         示例：
         输入：
+        main_query = 三角函数
         prompt = 什麽是三角函数？
         summary = 三角函数是数学很常见的一类关于角度的函数。三角函数将直角三角形的内角和它的两边的比值相关联，亦可以用单位圆的各种有关线段的长短的等价来定义。三角函数在研究三角形和圆形等几何形状的性质时有着重要的作用，亦是研究振动、波、天体运动和各种周期性现象的基础数学工具。在数学分析上，三角函数亦定义为无穷级数或特定微分方程式的解，允许它们的取值扩展到任意实数值，甚至是复数值。
         输出：
         定义 用途 基础+公式
+        解释：
+        三角函数是一种数学函数，用户可能想要了解其定义、用途和基础公式等信息。
 
         输入：
+        main_query = trigonometric+functions
         prompt = What is a trigonometric function？
         summary = Trigonometric functions are a common class of angle-related functions in mathematics. They relate the interior angles of a right triangle to the ratios of its two sides, and can also be defined using the equivalence of various line segments related to the lengths of a unit circle. Trigonometric functions play a crucial role in studying the properties of geometric shapes such as triangles and circles, and are fundamental mathematical tools for studying vibrations, waves, celestial motion, and various periodic phenomena. In mathematical analysis, trigonometric functions are also defined as solutions to infinite series or specific differential equations, allowing their values ​​to be extended to any real number, and even complex numbers.
         输出：
         definitions purposes general+formulas
+        解释：
+        三角函数是一种数学函数，用户可能想要了解三角函数的定义、用途和基础公式等信息。
 
+        输入：
+        main_query = ive
+        prompt = What is IVE?
+        summary = Ive (Korean: 아이브; RR: Aibeu; stylized in all caps) is a South Korean girl group formed by Starship Entertainment. The group is composed of six members: Gaeul, An Yu-jin, Rei, Jang Won-young, Liz, and Leeseo. Ive is known for their viral songs and for achieving one of the most successful debuts in recent K-pop, having received several rookie awards and featuring on Forbes Korea Power Celebrity 40.
+        输出：
+        members albums songs news awards fan+name concert
+        解释：
+        IVE是一个韩国女子组合，用户可能想要了解IVE的成员、专辑、歌曲、新闻、奖项和演出等信息。
+
+        输入：
+        main_query = apple
+        prompt = 什么是苹果公司?
+        summary = 蘋果公司（英語：Apple Inc.），原稱蘋果電腦公司（英語：Apple Computer, Inc.），是源自美國的跨國科技公司，總部位於美國加州的庫比蒂諾，與亞馬遜、谷歌、微軟、Meta並列為五大科技巨擘。目前的業務包括設計、研發、手機通訊和銷售消費電子、電腦軟體、線上服務和個人電腦。
+        输出：
+        成立时间 产品 历史 新闻
+        解释：
+        蘋果公司是一家科技公司，用户可能想要了解蘋果公司的成立时间、产品、历史和新闻等信息。
+        
         请严格按照上述格式和示例执行。"""
 
         # Generate queries based on the summary of the search results
@@ -146,7 +172,7 @@ class QueryStorm:
             [
                 {
                     "role": "user",
-                    "content": prompt.format(prompt = u_prompt, summary = summary, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = classify(u_prompt)[0])
+                    "content": prompt.format(prompt = u_prompt, main_query = main_query, summary = summary, datetime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), lang = classify(u_prompt)[0])
                 }
             ]
         )
@@ -199,6 +225,9 @@ class QueryStorm:
         输出：2026+kpop 專輯 歌曲
         - 用户提示词：搜索2025年的科技新聞（明确指定时间点）
         输出：2025+科技+新聞
+        - 用户提示词：搜索HoneyWorks的“这么可爱真是抱歉”的歌曲资讯 （注意此处的主体是组合连带歌名“HoneyWorks+这么可爱真是抱歉”，不能拆开，否则会影响搜索结果）
+        输出：HoneyWorks+这么可爱真是抱歉 歌曲资讯 发布时间 歌词
+        
         
         请严格遵循上述格式，确保输出的关键词准确、简洁，能够帮助用户进行高效的网络搜索。"""
 

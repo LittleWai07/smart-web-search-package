@@ -6,7 +6,7 @@ This module implements the ChromeDriver.
 """
 
 # Import the required modules
-from selenium.webdriver import Chrome
+from selenium.webdriver.chrome.webdriver import WebDriver as Chrome
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 
